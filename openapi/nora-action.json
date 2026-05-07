@@ -1,0 +1,201 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Nora Conversation Capture Action",
+    "version": "1.0.0",
+    "description": "OpenAPI schema for the ChatGPT action that sends conversation captures to the Nora backend."
+  },
+  "servers": [
+    {
+      "url": "https://YOUR_PUBLIC_BACKEND_URL",
+      "description": "Public accessible backend URL for the action"
+    }
+  ],
+  "paths": {
+    "/api/chat": {
+      "post": {
+        "summary": "Genera respuesta de Nora con GPT",
+        "operationId": "generateNoraResponse",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequestPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Respuesta generada con éxito",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/api/capturar-conversacion": {
+      "post": {
+        "summary": "Captura una conversación de Nora",
+        "operationId": "captureConversation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaptureConversationPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Captura registrada con éxito",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaptureConversationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CaptureConversationPayload": {
+        "type": "object",
+        "required": ["asistente_nombre", "pregunta", "respuesta", "region"],
+        "properties": {
+          "asistente_nombre": {
+            "type": "string",
+            "example": "NORA"
+          },
+          "pregunta": {
+            "type": "string",
+            "example": "¿Cuál es el mejor plan de viaje para Cartagena?"
+          },
+          "respuesta": {
+            "type": "string",
+            "example": "El mejor plan es..."
+          },
+          "usuario_nombre": {
+            "type": "string",
+            "example": "Carlos"
+          },
+          "usuario_email": {
+            "type": "string",
+            "format": "email",
+            "example": "carlos@example.com"
+          },
+          "usuario_id": {
+            "type": "string",
+            "example": "user_123"
+          },
+          "region": {
+            "type": "string",
+            "example": "Nora"
+          },
+          "status": {
+            "type": "string",
+            "example": "capturada"
+          }
+        }
+      },
+      "ChatRequestPayload": {
+        "type": "object",
+        "required": ["pregunta"],
+        "properties": {
+          "pregunta": {
+            "type": "string",
+            "example": "Necesito ayuda para reservar un hotel en Cartagena"
+          },
+          "usuario_nombre": {
+            "type": "string",
+            "example": "Carlos"
+          },
+          "usuario_email": {
+            "type": "string",
+            "format": "email",
+            "example": "carlos@example.com"
+          },
+          "usuario_id": {
+            "type": "string",
+            "example": "user_123"
+          },
+          "region": {
+            "type": "string",
+            "example": "Nora"
+          }
+        }
+      },
+      "ChatResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "success"
+          },
+          "respuesta": {
+            "type": "string",
+            "example": "Claro, te ayudo con opciones de hotel en Cartagena."
+          },
+          "modelo": {
+            "type": "string",
+            "example": "gpt-4o-mini"
+          }
+        }
+      },
+      "CaptureConversationResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "success"
+          },
+          "mensaje": {
+            "type": "string",
+            "example": "Captura registrada correctamente"
+          },
+          "message": {
+            "type": "string",
+            "example": "Captura registrada correctamente"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "conversationId": {
+                "type": "string",
+                "example": "conv_123456"
+              }
+            }
+          },
+          "score_promedio": {
+            "type": "number",
+            "example": 4.7
+          }
+        }
+      }
+    }
+  }
+}

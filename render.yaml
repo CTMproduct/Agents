@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: nora-backend
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: FRONTEND_URL
+        value: https://YOUR_FRONTEND_DOMAIN
+      - key: OPENAI_API_KEY
+        sync: false
