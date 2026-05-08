@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://YOUR_PUBLIC_BACKEND_URL",
+      "url": "https://agents-seqv.onrender.com",
       "description": "Public accessible backend URL for the action"
     }
   ],
