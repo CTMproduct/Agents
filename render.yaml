@@ -18,3 +18,15 @@ services:
         value: https://YOUR_FRONTEND_DOMAIN
       - key: OPENAI_API_KEY
         sync: false
+  - type: web
+    name: nora-frontend
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
