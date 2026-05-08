@@ -1,4 +1,4 @@
-import React from 'react';
+import type { FC } from 'react';
 import { PieChart, Pie, Cell, Legend, ResponsiveContainer, Tooltip } from 'recharts';
 import '../styles/Chart.css';
 
@@ -11,7 +11,7 @@ interface PieChartComponentProps {
   loading?: boolean;
 }
 
-export const PieChartComponent: React.FC<PieChartComponentProps> = ({
+export const PieChartComponent: FC<PieChartComponentProps> = ({
   title,
   data,
   dataKey,
@@ -47,12 +47,14 @@ export const PieChartComponent: React.FC<PieChartComponentProps> = ({
             cx="50%"
             cy="50%"
             labelLine={false}
-            label={({ name, value }) => `${name}: ${value}%`}
+            label={({ name, value, payload }) =>
+              `${payload?.[nameKey] ?? name}: ${value}%`
+            }
             outerRadius={100}
             fill="#8884d8"
             dataKey={dataKey}
           >
-            {data.map((entry, index) => (
+            {data.map((_, index) => (
               <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
             ))}
           </Pie>
