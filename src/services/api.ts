@@ -28,14 +28,14 @@ export const apiService = {
     try {
       const response = await apiClient.get('/api/metrics');
       return {
-        conversations: response.data.conversations || generateMockConversationMetrics(),
-        performance: response.data.performance || generateMockPerformanceMetrics(),
-        hallucination: response.data.hallucination || generateMockHallucinationMetrics(),
-        lastUpdated: new Date(),
+        conversations: response.data.conversations,
+        performance: response.data.performance,
+        hallucination: response.data.hallucination,
+        lastUpdated: new Date(response.data.lastUpdated || new Date()),
       };
     } catch (error) {
       console.error('Error fetching metrics:', error);
-      return generateMockMetrics();
+      throw error;
     }
   },
 
@@ -48,7 +48,7 @@ export const apiService = {
       return response.data;
     } catch (error) {
       console.error('Error fetching conversation history:', error);
-      return generateMockConversationHistory(limit);
+      return [];
     }
   },
 
@@ -61,7 +61,7 @@ export const apiService = {
       return response.data;
     } catch (error) {
       console.error('Error fetching performance history:', error);
-      return generateMockPerformanceHistory(limit);
+      return [];
     }
   },
 
@@ -74,7 +74,7 @@ export const apiService = {
       return response.data;
     } catch (error) {
       console.error('Error fetching hallucination history:', error);
-      return generateMockHallucinationHistory(limit);
+      return [];
     }
   },
 
@@ -123,70 +123,3 @@ export const apiService = {
   },
 };
 
-// Mock data generators for development
-function generateMockConversationMetrics(): ConversationMetrics {
-  return {
-    total: 1250,
-    today: 45,
-    averageDuration: 4.5,
-    averageSatisfaction: 4.2,
-    trend: 12.5,
-  };
-}
-
-function generateMockPerformanceMetrics(): PerformanceMetrics {
-  return {
-    uptime: 99.8,
-    averageLatency: 245,
-    errorRate: 0.5,
-    requestsPerMinute: 120,
-    peakLatency: 890,
-  };
-}
-
-function generateMockHallucinationMetrics(): HallucinationMetrics {
-  return {
-    rate: 2.3,
-    count: 28,
-    factualAccuracy: 97.7,
-    byTopic: {
-      'Travel Info': 1.2,
-      'Flight Details': 3.5,
-      'Hotel Booking': 2.1,
-      'General Info': 1.8,
-    },
-  };
-}
-
-function generateMockMetrics(): AgentMetrics {
-  return {
-    conversations: generateMockConversationMetrics(),
-    performance: generateMockPerformanceMetrics(),
-    hallucination: generateMockHallucinationMetrics(),
-    lastUpdated: new Date(),
-  };
-}
-
-function generateMockConversationHistory(limit: number) {
-  return Array.from({ length: limit }, (_, i) => ({
-    timestamp: new Date(Date.now() - (limit - i - 1) * 3600000).toLocaleTimeString(),
-    count: Math.floor(Math.random() * 50 + 20),
-    satisfaction: parseFloat((Math.random() * 0.8 + 3.8).toFixed(1)),
-  }));
-}
-
-function generateMockPerformanceHistory(limit: number) {
-  return Array.from({ length: limit }, (_, i) => ({
-    timestamp: new Date(Date.now() - (limit - i - 1) * 3600000).toLocaleTimeString(),
-    latency: Math.floor(Math.random() * 400 + 100),
-    errors: Math.floor(Math.random() * 5),
-  }));
-}
-
-function generateMockHallucinationHistory(limit: number) {
-  return Array.from({ length: limit }, (_, i) => ({
-    date: new Date(Date.now() - (limit - i - 1) * 86400000).toLocaleDateString(),
-    rate: parseFloat((Math.random() * 3 + 1).toFixed(2)),
-    count: Math.floor(Math.random() * 10 + 2),
-  }));
-}
