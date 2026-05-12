@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://agents-seqv.onrender.com",
+      "url": "https://ctm-analyzer-backend.onrender.com",
       "description": "Public accessible backend URL for the action"
     }
   ],

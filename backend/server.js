@@ -16,6 +16,21 @@ app.use(
 );
 app.use(express.json());
 
+// Root route for status
+app.get('/', (req, res) => {
+  res.json({
+    status: 'online',
+    message: 'Nora API Backend is running',
+    endpoints: {
+      metrics: '/api/metrics',
+      health: '/health',
+      chat: '/api/chat',
+      capture: '/api/capturar-conversacion'
+    }
+  });
+});
+
+
 // OpenAI Client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,

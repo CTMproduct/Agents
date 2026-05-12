@@ -15,7 +15,7 @@ services:
       - key: OPENAI_MODEL
         value: gpt-4o-mini
       - key: FRONTEND_URL
-        value: https://YOUR_FRONTEND_DOMAIN
+        value: https://agents-seqv.onrender.com
       - key: OPENAI_API_KEY
         sync: false
   - type: web
@@ -30,3 +30,6 @@ services:
         value: production
       - key: PORT
         value: 10000
+      - key: VITE_API_BASE_URL
+        value: https://ctm-analyzer-backend.onrender.com
+
