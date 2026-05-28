@@ -9,6 +9,7 @@ import { ConversationCaptureForm } from './ConversationCaptureForm';
 import { useMetrics } from '../hooks/useMetrics';
 import { useConversationHistory, usePerformanceHistory, useHallucinationHistory } from '../hooks/useChartData';
 import '../styles/Dashboard.css';
+import { ConversationsList } from './ConversationsList';
 
 export const Dashboard: React.FC = () => {
   const {
@@ -290,6 +291,12 @@ export const Dashboard: React.FC = () => {
                 </div>
               </div>
             </div>
+          </section>
+
+          {/* SECTION 5: CONVERSACIONES CAPTURADAS */}
+          <section className="dashboard__section">
+            <h2 className="dashboard__section-title">💬 Conversaciones Capturadas</h2>
+            <ConversationsList />
           </section>
         </main>
       )}

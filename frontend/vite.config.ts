@@ -15,7 +15,7 @@ export default defineConfig({
     proxy: {
       // Proxy all /api/* calls to backend
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'http://localhost:3001',
         changeOrigin: true,
         rewrite: (path) => path,
       },
