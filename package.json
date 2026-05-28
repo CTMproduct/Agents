@@ -1,14 +1,18 @@
 {
-  "name": "nora-dashboard",
+  "name": "nora-agents",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "version": "1.0.0",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
+    "install:all": "npm install --prefix backend && npm install",
+    "build": "npm run build --prefix backend && npm run build",
+    "start": "npm run start --prefix backend",
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "dev:backend": "npm run dev --prefix backend",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "start": "vite preview --host 0.0.0.0 --port $PORT"
+    "preview": "vite preview"
   },
   "dependencies": {
     "axios": "^1.16.0",
