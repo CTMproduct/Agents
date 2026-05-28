@@ -6,19 +6,27 @@ export default defineConfig({
   plugins: [react()],
   server: {
     allowedHosts: [
-      'agents-seqv.onrender.com',
-      '.onrender.com'
+      'localhost',
+      '127.0.0.1',
+      '.railway.app',
     ],
     host: '0.0.0.0',
-    port: 5173
+    port: 5173,
+    proxy: {
+      // Proxy all /api/* calls to backend
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        rewrite: (path) => path,
+      },
+    },
   },
   preview: {
     allowedHosts: [
-      'agents-seqv.onrender.com',
-      '.onrender.com'
+      '.railway.app',
     ],
     host: '0.0.0.0',
-    port: 4173
+    port: 5173
   }
 })
 
