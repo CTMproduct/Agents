@@ -7,8 +7,8 @@
   },
   "servers": [
     {
-      "url": "http://localhost:3001",
-      "description": "Local development backend for the action"
+      "url": "https://ctm-analyzer-backend-production.up.railway.app",
+      "description": "Production backend on Railway"
     }
   ],
   "paths": {
