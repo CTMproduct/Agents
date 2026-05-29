@@ -113,6 +113,12 @@ console.log(`  ALLOW_LOCAL_DEBUG: ${process.env.ALLOW_LOCAL_DEBUG === 'true'}`);
 app.use(cors(corsOptions));
 app.use(express.json());
 
+// Servir archivos estáticos del frontend compilado (después de middleware, antes de rutas)
+const frontendDistPath = path.resolve(__dirname, '../frontend/dist');
+if (fs.existsSync(frontendDistPath)) {
+  app.use(express.static(frontendDistPath));
+}
+
 // OpenAI Client
 if (!process.env.OPENAI_API_KEY) {
   console.error('❌ ERROR: OPENAI_API_KEY no está configurada');
@@ -697,18 +703,34 @@ app.get('/health', (req, res) => {
 });
 
 // ============================================
+// SPA Fallback - Servir index.html para rutas que no son API
+// ============================================
+app.get('*', (req, res) => {
+  const indexPath = path.join(frontendDistPath, 'index.html');
+  if (!req.path.startsWith('/api') && !req.path.startsWith('/health') && fs.existsSync(indexPath)) {
+    res.sendFile(indexPath, (err) => {
+      if (err) {
+        res.status(404).json({
+          status: 'error',
+          message: `Endpoint no encontrado: ${req.method} ${req.url}`
+        });
+      }
+    });
+  } else {
+    res.status(404).json({
+      status: 'error',
+      message: `Endpoint no encontrado: ${req.method} ${req.url}`,
+      availableEndpoints: {
+        GET: ['/', '/health', '/api/metrics', '/api/conversations', '/api/export/conversations'],
+        POST: ['/api/chat', '/api/capturar-conversacion']
+      }
+    });
+  }
+});
+
+// ============================================
 // Error Handlers
 // ============================================
-app.use((req, res) => {
-  res.status(404).json({
-    status: 'error',
-    message: `Endpoint no encontrado: ${req.method} ${req.url}`,
-    availableEndpoints: {
-      GET: ['/', '/health', '/api/metrics', '/api/conversations', '/api/export/conversations'],
-      POST: ['/api/chat', '/api/capturar-conversacion']
-    }
-  });
-});
 
 app.use((err, req, res, next) => {
   console.error('❌ Unhandled Error:', err);
