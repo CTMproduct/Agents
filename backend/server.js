@@ -202,8 +202,8 @@ async function getConversations(limit = 100) {
   return fallbackStorage.conversations.slice(0, limit);
 }
 
-// Root route
-app.get('/', (req, res) => {
+// API status route
+app.get('/api/status', (req, res) => {
   res.json({
     status: 'online',
     message: 'Nora API Backend is running',
@@ -220,10 +220,10 @@ app.get('/', (req, res) => {
       capture: '/api/capturar-conversacion',
       conversations: '/api/conversations',
       export: '/api/export/conversations',
+      frontend: '/',
     }
   });
 });
-
 // ============================================
 // ENDPOINT: POST /api/chat
 // ============================================
