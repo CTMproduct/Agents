@@ -7,9 +7,9 @@
   },
   "scripts": {
     "install:all": "npm install --prefix backend && npm install",
-    "build": "npm run build",
-    "build:all": "npm install --prefix backend && npm install && npm run build",
-    "start": "npm run start --prefix backend",
+    "build": "vite build",
+    "build:all": "npm install --prefix backend && npm install && vite build",
+    "start": "serve -s dist -l 3000",
     "dev": "vite",
     "dev:backend": "npm run dev --prefix backend",
     "lint": "eslint .",
@@ -19,7 +19,8 @@
     "axios": "^1.16.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
-    "recharts": "^3.8.1"
+    "recharts": "^3.8.1",
+    "serve": "^14.2.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
