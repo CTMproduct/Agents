@@ -113,6 +113,17 @@ console.log(`  ALLOW_LOCAL_DEBUG: ${process.env.ALLOW_LOCAL_DEBUG === 'true'}`);
 app.use(cors(corsOptions));
 app.use(express.json());
 
+// ============================================
+// STATIC FILES - Serve Frontend (SPA)
+// ============================================
+const frontendDistPath = path.join(__dirname, '..', 'frontend', 'dist');
+if (fs.existsSync(frontendDistPath)) {
+  console.log('📁 Serving static files from:', frontendDistPath);
+  app.use(express.static(frontendDistPath));
+} else {
+  console.warn('⚠️  Frontend dist folder not found at:', frontendDistPath);
+}
+
 // OpenAI Client
 if (!process.env.OPENAI_API_KEY) {
   console.error('❌ ERROR: OPENAI_API_KEY no está configurada');
@@ -697,18 +708,43 @@ app.get('/health', (req, res) => {
 });
 
 // ============================================
+// SPA Fallback - Serve index.html for frontend routes
+// ============================================
+app.get('*', (req, res) => {
+  // Don't serve index.html for API routes or health check
+  if (req.path.startsWith('/api') || req.path === '/health') {
+    res.status(404).json({
+      status: 'error',
+      message: `Endpoint no encontrado: ${req.method} ${req.path}`,
+      availableEndpoints: {
+        GET: ['/health', '/api/metrics', '/api/conversations', '/api/export/conversations'],
+        POST: ['/api/chat', '/api/capturar-conversacion']
+      }
+    });
+    return;
+  }
+
+  // Serve index.html for all other routes (frontend SPA)
+  const indexPath = path.join(frontendDistPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath, (err) => {
+      if (err) {
+        console.error('Error serving index.html:', err);
+        res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+      }
+    });
+  } else {
+    res.status(404).json({
+      status: 'error',
+      message: 'Frontend not found. Please ensure frontend is built.',
+      details: `Expected dist at: ${indexPath}`
+    });
+  }
+});
+
+// ============================================
 // Error Handlers
 // ============================================
-app.use((req, res) => {
-  res.status(404).json({
-    status: 'error',
-    message: `Endpoint no encontrado: ${req.method} ${req.url}`,
-    availableEndpoints: {
-      GET: ['/', '/health', '/api/metrics', '/api/conversations', '/api/export/conversations'],
-      POST: ['/api/chat', '/api/capturar-conversacion']
-    }
-  });
-});
 
 app.use((err, req, res, next) => {
   console.error('❌ Unhandled Error:', err);
