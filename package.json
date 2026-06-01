@@ -12,8 +12,6 @@
     "start": "npm run start --prefix backend",
     "dev:backend": "npm run dev --prefix backend",
     "dev:frontend": "npm run dev --prefix frontend",
-    "dev": "npm run dev:frontend",
-    "lint": "eslint .",
-    "preview": "npm run preview --prefix frontend"
+    "dev": "npm run dev:frontend"
   }
 }
