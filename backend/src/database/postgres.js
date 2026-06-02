@@ -34,6 +34,23 @@ async function initPostgres() {
       )
     `);
 
+    // Agregar nuevas columnas si no existen (retrocompatible)
+    await pool.query(`
+      ALTER TABLE conversations ADD COLUMN IF NOT EXISTS categoria TEXT DEFAULT 'No especificado';
+    `);
+    await pool.query(`
+      ALTER TABLE conversations ADD COLUMN IF NOT EXISTS origen_pais TEXT DEFAULT 'No especificado';
+    `);
+    await pool.query(`
+      ALTER TABLE conversations ADD COLUMN IF NOT EXISTS pregunta_base TEXT;
+    `);
+    await pool.query(`
+      ALTER TABLE conversations ADD COLUMN IF NOT EXISTS fuente TEXT DEFAULT 'GPT_ACTION';
+    `);
+    await pool.query(`
+      ALTER TABLE conversations ADD COLUMN IF NOT EXISTS tipo_interaccion TEXT DEFAULT 'respuesta_gpt';
+    `);
+
     pgReady = true;
     console.log('✅ PostgreSQL connected and conversation table initialized');
     return true;
@@ -66,8 +83,13 @@ async function saveConversationPostgres(data) {
       score_promedio,
       timestamp,
       created_at,
-      updated_at
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+      updated_at,
+      categoria,
+      origen_pais,
+      pregunta_base,
+      fuente,
+      tipo_interaccion
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
     ON CONFLICT (id) DO UPDATE SET
       asistente_nombre = EXCLUDED.asistente_nombre,
       pregunta = EXCLUDED.pregunta,
@@ -79,7 +101,12 @@ async function saveConversationPostgres(data) {
       status = EXCLUDED.status,
       score_promedio = EXCLUDED.score_promedio,
       timestamp = EXCLUDED.timestamp,
-      updated_at = EXCLUDED.updated_at
+      updated_at = EXCLUDED.updated_at,
+      categoria = EXCLUDED.categoria,
+      origen_pais = EXCLUDED.origen_pais,
+      pregunta_base = EXCLUDED.pregunta_base,
+      fuente = EXCLUDED.fuente,
+      tipo_interaccion = EXCLUDED.tipo_interaccion
     RETURNING *;
   `;
 
@@ -97,6 +124,11 @@ async function saveConversationPostgres(data) {
     data.timestamp,
     data.timestamp,
     new Date().toISOString(),
+    data.categoria || 'No especificado',
+    data.origen_pais || 'No especificado',
+    data.pregunta_base || null,
+    data.fuente || 'GPT_ACTION',
+    data.tipo_interaccion || 'respuesta_gpt',
   ];
 
   const result = await pool.query(query, values);

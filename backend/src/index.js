@@ -343,6 +343,12 @@ app.post('/api/capturar-conversacion', async (req, res) => {
       usuario_id,
       region,
       status = 'capturada',
+      // Nuevos campos opcionales
+      categoria,
+      origen_pais,
+      pregunta_base,
+      fuente,
+      tipo_interaccion,
     } = req.body;
 
     // Validación
@@ -376,7 +382,7 @@ app.post('/api/capturar-conversacion', async (req, res) => {
       console.error('Error evaluating with OpenAI:', err.message);
     }
 
-    // Guardar conversación
+    // Guardar conversación con campos opcionales
     const conversationData = {
       asistente_nombre,
       pregunta,
@@ -387,6 +393,12 @@ app.post('/api/capturar-conversacion', async (req, res) => {
       region,
       status,
       score_promedio: scorePromedio,
+      // Campos opcionales con defaults
+      categoria: categoria || 'No especificado',
+      origen_pais: origen_pais || 'No especificado',
+      pregunta_base: pregunta_base || null,
+      fuente: fuente || 'GPT_ACTION',
+      tipo_interaccion: tipo_interaccion || 'respuesta_gpt',
     };
 
     const savedConversation = await saveConversation(conversationData);
@@ -526,6 +538,28 @@ app.get('/api/metrics', async (req, res) => {
       byTopic['General Info'] = 4;
     }
 
+    // Calcular nuevas métricas opcionales
+    const byCategoriaUsuario = {};
+    const byOrigenPais = {};
+    const byPreguntaBase = {};
+
+    if (total > 0) {
+      conversations.forEach(c => {
+        // Por categoría de usuario
+        const categoria = c.categoria || 'No especificado';
+        byCategoriaUsuario[categoria] = (byCategoriaUsuario[categoria] || 0) + 1;
+
+        // Por origen del país
+        const pais = c.origen_pais || 'No especificado';
+        byOrigenPais[pais] = (byOrigenPais[pais] || 0) + 1;
+
+        // Por pregunta base (si existe)
+        if (c.pregunta_base) {
+          byPreguntaBase[c.pregunta_base] = (byPreguntaBase[c.pregunta_base] || 0) + 1;
+        }
+      });
+    }
+
     res.json({
       status: 'success',
       conversations: {
@@ -552,6 +586,14 @@ app.get('/api/metrics', async (req, res) => {
         count: hallucinationCount,
         factualAccuracy,
         byTopic,
+      },
+      // Nuevas métricas opcionales
+      usuariosMetricas: {
+        byCategoriaUsuario,
+        byOrigenPais,
+      },
+      preguntasMetricas: {
+        byPreguntaBase: Object.keys(byPreguntaBase).length > 0 ? byPreguntaBase : null,
       },
       database: isPostgresConnected()
         ? 'PostgreSQL'
