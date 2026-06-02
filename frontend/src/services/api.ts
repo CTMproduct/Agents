@@ -7,7 +7,7 @@ import type {
   ChatResponse,
 } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://ctm-analyzer-backend.onrender.com';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 const ASSISTANT_NAME = import.meta.env.VITE_ASSISTANT_NAME || 'NORA';
 const DEBUG_MODE = import.meta.env.VITE_DEBUG_MODE === 'true';
 
