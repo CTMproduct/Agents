@@ -180,7 +180,16 @@ export const apiService = {
           .slice(-limit);
       }
       const response = await apiClient.get(`/api/conversations/history?limit=${limit}`);
-      return response.data;
+      const data = response.data;
+
+      // Normalize: return array directly or extract from container
+      if (Array.isArray(data)) {
+        return data;
+      }
+      if (Array.isArray(data?.data)) {
+        return data.data;
+      }
+      return [];
     } catch (error) {
       console.error('Error fetching conversation history:', error);
       return [];
@@ -197,7 +206,16 @@ export const apiService = {
         }));
       }
       const response = await apiClient.get(`/api/performance/history?limit=${limit}`);
-      return response.data;
+      const data = response.data;
+
+      // Normalize: return array directly or extract from container
+      if (Array.isArray(data)) {
+        return data;
+      }
+      if (Array.isArray(data?.data)) {
+        return data.data;
+      }
+      return [];
     } catch (error) {
       console.error('Error fetching performance history:', error);
       return [];
@@ -226,7 +244,16 @@ export const apiService = {
           .slice(-limit);
       }
       const response = await apiClient.get(`/api/hallucinations/history?limit=${limit}`);
-      return response.data;
+      const data = response.data;
+
+      // Normalize: return array directly or extract from container
+      if (Array.isArray(data)) {
+        return data;
+      }
+      if (Array.isArray(data?.data)) {
+        return data.data;
+      }
+      return [];
     } catch (error) {
       console.error('Error fetching hallucination history:', error);
       return [];
@@ -249,10 +276,37 @@ export const apiService = {
   async getConversations(limit: number = 100): Promise<any> {
     try {
       const response = await apiClient.get(`/api/conversations?limit=${limit}`);
-      return response.data;
+      const data = response.data;
+
+      // Normalize response: extract array from container if needed
+      if (data?.status === 'success' && Array.isArray(data.data)) {
+        return {
+          status: 'success',
+          data: data.data,
+          count: data.count || data.data.length,
+        };
+      }
+
+      if (Array.isArray(data)) {
+        return {
+          status: 'success',
+          data: data,
+          count: data.length,
+        };
+      }
+
+      return {
+        status: 'success',
+        data: [],
+        count: 0,
+      };
     } catch (error) {
       console.error('Error fetching conversations:', error);
-      return null;
+      return {
+        status: 'error',
+        data: [],
+        count: 0,
+      };
     }
   },
 

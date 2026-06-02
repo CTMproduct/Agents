@@ -70,7 +70,10 @@ export const ConversationsList: React.FC = () => {
     }
   };
 
-  const filteredConversations = conversations
+  // Safely ensure conversations is an array
+  const safeConversations = Array.isArray(conversations) ? conversations : [];
+
+  const filteredConversations = safeConversations
     .filter(c => {
       const searchTerm = filter.toLowerCase();
       return (

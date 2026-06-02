@@ -28,7 +28,10 @@ export const PieChartComponent: FC<PieChartComponentProps> = ({
     );
   }
 
-  if (!data || data.length === 0) {
+  // Ensure data is an array
+  const safeData = Array.isArray(data) ? data : [];
+
+  if (safeData.length === 0) {
     return (
       <div className="chart chart--empty">
         <h3 className="chart__title">{title}</h3>
@@ -43,7 +46,7 @@ export const PieChartComponent: FC<PieChartComponentProps> = ({
       <ResponsiveContainer width="100%" height={300}>
         <PieChart>
           <Pie
-            data={data}
+            data={safeData}
             cx="50%"
             cy="50%"
             labelLine={false}
@@ -54,7 +57,7 @@ export const PieChartComponent: FC<PieChartComponentProps> = ({
             fill="#8884d8"
             dataKey={dataKey}
           >
-            {data.map((_, index) => (
+            {safeData.map((_, index) => (
               <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
             ))}
           </Pie>
