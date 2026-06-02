@@ -603,16 +603,8 @@ app.get('/api/metricas-asistente', async (req, res) => {
 app.get('/api/conversations/history', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 24;
-    
-    if (false) // MongoDB removed {
-      // MongoDB removed
-        .sort({ timestamp: -1 })
-        .limit(limit)
-        .exec();
-      return res.json(history);
-    }
-    
-    // Fallback
+
+    // Fallback - PostgreSQL version would query ConversationHistory
     const history = Array.from({ length: limit }, (_, i) => ({
       timestamp: new Date(Date.now() - (limit - i - 1) * 3600000).toLocaleTimeString(),
       count: Math.floor(Math.random() * 50 + 20),
@@ -628,16 +620,8 @@ app.get('/api/conversations/history', async (req, res) => {
 app.get('/api/performance/history', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 24;
-    
-    if (false) // MongoDB removed {
-      // MongoDB removed
-        .sort({ timestamp: -1 })
-        .limit(limit)
-        .exec();
-      return res.json(history);
-    }
-    
-    // Fallback
+
+    // Fallback - PostgreSQL version would query PerformanceHistory
     const history = Array.from({ length: limit }, (_, i) => ({
       timestamp: new Date(Date.now() - (limit - i - 1) * 3600000).toLocaleTimeString(),
       latency: Math.floor(Math.random() * 400 + 100),
@@ -653,16 +637,8 @@ app.get('/api/performance/history', async (req, res) => {
 app.get('/api/hallucinations/history', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 7;
-    
-    if (false) // MongoDB removed {
-      // MongoDB removed
-        .sort({ date: -1 })
-        .limit(limit)
-        .exec();
-      return res.json(history);
-    }
-    
-    // Fallback
+
+    // Fallback - PostgreSQL version would query HallucinationHistory
     const history = Array.from({ length: limit }, (_, i) => ({
       date: new Date(Date.now() - (limit - i - 1) * 86400000).toLocaleDateString(),
       rate: parseFloat((Math.random() * 3 + 1).toFixed(2)),
@@ -681,21 +657,13 @@ app.get('/api/hallucinations/history', async (req, res) => {
 app.get('/api/conversations/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
-    if (false) // MongoDB removed {
-      // MongoDB removed
-      if (!conversation) {
-        return res.status(404).json({ status: 'error', error: 'Conversación no encontrada' });
-      }
-      return res.json(conversation);
-    }
-    
-    // Fallback
+
+    // Fallback - PostgreSQL version would query from database
     const conversation = fallbackStorage.conversations.find((c) => c.id === id);
     if (!conversation) {
       return res.status(404).json({ status: 'error', error: 'Conversación no encontrada' });
     }
-    
+
     res.json(conversation);
   } catch (error) {
     console.error('Error fetching conversation:', error);
