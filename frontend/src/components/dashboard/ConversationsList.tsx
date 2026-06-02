@@ -173,6 +173,8 @@ export const ConversationsList: React.FC = () => {
                 <tr>
                   <th>Fecha</th>
                   <th>Usuario</th>
+                  <th>Categoría</th>
+                  <th>País</th>
                   <th>Pregunta</th>
                   <th>Respuesta</th>
                   <th>Puntuación</th>
@@ -185,11 +187,33 @@ export const ConversationsList: React.FC = () => {
                       {new Date(conv.timestamp || conv.createdAt || 0).toLocaleString('es-ES')}
                     </td>
                     <td className="conversations-list__user">
-                      <div className="conversations-list__user-name">{conv.usuario_nombre || 'N/A'}</div>
+                      <div className="conversations-list__user-name">{conv.usuario_nombre || 'Anónimo'}</div>
                       <small>{conv.usuario_email || 'Sin email'}</small>
+                    </td>
+                    <td className="conversations-list__categoria">
+                      <span style={{
+                        display: 'inline-block',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        backgroundColor: conv.categoria === 'Hotel' ? '#e8f4f8' :
+                                        conv.categoria === 'Agencia de viajes' ? '#f0e8f8' : '#f8f8f8',
+                        color: conv.categoria === 'Hotel' ? '#0066cc' :
+                               conv.categoria === 'Agencia de viajes' ? '#6600cc' : '#666'
+                      }}>
+                        {conv.categoria || 'No especificado'}
+                      </span>
+                    </td>
+                    <td className="conversations-list__pais">
+                      <small>{conv.origen_pais || 'No especificado'}</small>
                     </td>
                     <td className="conversations-list__question">
                       <div className="conversations-list__text-preview">{conv.pregunta}</div>
+                      {conv.pregunta_base && (
+                        <small style={{ color: '#999', marginTop: '4px', display: 'block' }}>
+                          Base: {conv.pregunta_base}
+                        </small>
+                      )}
                     </td>
                     <td className="conversations-list__answer">
                       <div className="conversations-list__text-preview">{conv.respuesta}</div>

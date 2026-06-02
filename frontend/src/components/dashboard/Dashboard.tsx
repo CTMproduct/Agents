@@ -292,7 +292,63 @@ export const Dashboard: React.FC = () => {
             </div>
           </section>
 
-          {/* SECTION 5: CONVERSACIONES CAPTURADAS */}
+          {/* SECTION 5: ANÁLISIS DE USUARIOS (OPCIONAL) */}
+          {metrics?.usuariosMetricas && (
+            <section className="dashboard__section">
+              <h2 className="dashboard__section-title">👥 Análisis de Usuarios</h2>
+              <div className="dashboard__chart-row">
+                {metrics.usuariosMetricas.byCategoriaUsuario && Object.keys(metrics.usuariosMetricas.byCategoriaUsuario).length > 0 && (
+                  <div className="dashboard__chart-container dashboard__chart-container--half">
+                    <div className="chart">
+                      <h3 className="chart__title">Usuarios por Categoría</h3>
+                      <div style={{ padding: '20px' }}>
+                        {Object.entries(metrics.usuariosMetricas.byCategoriaUsuario).map(([cat, count]) => (
+                          <div key={cat} style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>{cat}</span>
+                            <span style={{
+                              fontWeight: 'bold',
+                              backgroundColor: '#e8f4f8',
+                              padding: '4px 12px',
+                              borderRadius: '12px',
+                              color: '#0066cc'
+                            }}>
+                              {count as number}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {metrics.usuariosMetricas.byOrigenPais && Object.keys(metrics.usuariosMetricas.byOrigenPais).length > 0 && (
+                  <div className="dashboard__chart-container dashboard__chart-container--half">
+                    <div className="chart">
+                      <h3 className="chart__title">Usuarios por País</h3>
+                      <div style={{ padding: '20px' }}>
+                        {Object.entries(metrics.usuariosMetricas.byOrigenPais).map(([pais, count]) => (
+                          <div key={pais} style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>{pais}</span>
+                            <span style={{
+                              fontWeight: 'bold',
+                              backgroundColor: '#f0e8f8',
+                              padding: '4px 12px',
+                              borderRadius: '12px',
+                              color: '#6600cc'
+                            }}>
+                              {count as number}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+
+          {/* SECTION 6: CONVERSACIONES CAPTURADAS */}
           <section className="dashboard__section">
             <h2 className="dashboard__section-title">💬 Conversaciones Capturadas</h2>
             <ConversationsList />

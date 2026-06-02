@@ -178,35 +178,56 @@ async function saveConversation(data) {
       data.timestamp = new Date().toISOString();
     }
 
-    console.log('🔍 Debug: isPostgresConnected =', isPostgresConnected());
+    const isPostgresReady = isPostgresConnected();
+    console.log('\n📊 Database Save Status:');
+    console.log(`   PostgreSQL connected: ${isPostgresReady}`);
+    console.log(`   Conversation ID: ${data.id}`);
 
-    if (isPostgresConnected()) {
-      console.log('💾 Saving to PostgreSQL...');
+    if (isPostgresReady) {
+      console.log('📡 Attempting to save to PostgreSQL...');
       const conversation = await saveConversationPostgres(data);
-      console.log('✅ Saved to PostgreSQL successfully');
+      console.log('✅ Successfully saved to PostgreSQL');
       return conversation;
+    } else {
+      console.log('⚠️  PostgreSQL not connected, will use memory fallback');
     }
   } catch (error) {
-    console.warn('⚠️  Database save failed, using memory fallback:', error.message);
+    console.error('\n❌ PostgreSQL save failed:');
+    console.error(`   Error: ${error.message}`);
+    console.error(`   Code: ${error.code}`);
+    console.error('   Falling back to Memory Storage');
   }
 
-  console.log('⚠️  Using memory fallback');
+  console.log('💾 Saving to Memory fallback...');
   fallbackStorage.conversations.unshift(data);
   saveFallbackStorage();
+  console.log('✅ Saved to Memory fallback');
   return data;
 }
 
 // Helper function to get conversations (PostgreSQL only)
 async function getConversations(limit = 100) {
   try {
-    if (isPostgresConnected()) {
-      return await getConversationsPostgres(limit);
+    const isPostgresReady = isPostgresConnected();
+    console.log(`\n📖 Getting conversations (limit: ${limit})`);
+    console.log(`   PostgreSQL connected: ${isPostgresReady}`);
+
+    if (isPostgresReady) {
+      console.log('   Source: PostgreSQL');
+      const result = await getConversationsPostgres(limit);
+      console.log(`   Retrieved: ${result.length} conversations from PostgreSQL`);
+      return result;
     }
   } catch (error) {
-    console.warn('⚠️  Database query failed, using memory fallback:', error.message);
+    console.error('❌ PostgreSQL query failed:');
+    console.error(`   Error: ${error.message}`);
+    console.error('   Falling back to Memory Storage');
   }
-  
-  return fallbackStorage.conversations.slice(0, limit);
+
+  console.log('   Source: Memory Storage (Fallback)');
+  const result = fallbackStorage.conversations.slice(0, limit);
+  console.log(`   Retrieved: ${result.length} conversations from Memory`);
+  return result;
 }
 
 // API status route

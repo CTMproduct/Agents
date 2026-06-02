@@ -6,6 +6,7 @@ import type {
   ChatRequestPayload,
   ChatResponse,
 } from '../types';
+import { prepareConversationData } from '../utils/categoryClassifier';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 const ASSISTANT_NAME = import.meta.env.VITE_ASSISTANT_NAME || 'NORA';
@@ -405,49 +406,50 @@ export const apiService = {
   },
 
   /**
-   * Captura una conversación determinando automáticamente el endpoint correcto
-   * - Si respuesta está vacía → POST /api/chat-capturar (backend genera respuesta)
-   * - Si respuesta está llena → POST /api/capturar-conversacion (solo guarda)
+   * Captura una conversación con análisis automático de categoría
+   *
+   * Características:
+   * - Clasificación automática en 9 categorías
+   * - Generación automática de pregunta_base
+   * - Incluye campos: categoria, pregunta_base, fuente, tipo_interaccion
+   *
+   * Payload requerido mínimo:
+   * {
+   *   pregunta: "pregunta del usuario",
+   *   respuesta: "respuesta completa generada"
+   * }
+   *
+   * Campos opcionales (se rellenan automáticamente si no se proporcionan):
+   * {
+   *   usuario_nombre?: "nombre del usuario",
+   *   usuario_email?: "email del usuario",
+   *   usuario_id?: "ID del usuario",
+   *   categoria?: "categoría (se clasifica automáticamente)",
+   *   pregunta_base?: "pregunta base (se genera automáticamente)"
+   * }
    */
   async captureConversation(data: any): Promise<any> {
     try {
-      const hasAnswer = Boolean(data?.respuesta && data.respuesta.trim());
+      // Endpoint siempre es /api/capturar-conversacion (respuesta ya existe)
+      const endpoint = buildUrl('/api/capturar-conversacion');
 
-      const endpoint = hasAnswer
-        ? buildUrl('/api/capturar-conversacion')
-        : buildUrl('/api/chat-capturar');
-
-      const payload = hasAnswer
-        ? {
-            asistente_nombre: data.asistente_nombre || 'NORA',
-            pregunta: data.pregunta,
-            respuesta: data.respuesta,
-            usuario_nombre: data.usuario_nombre || 'Usuario Anónimo',
-            usuario_email: data.usuario_email || null,
-            usuario_id: data.usuario_id || null,
-            region: data.region || 'Nora',
-            status: 'capturada',
-          }
-        : {
-            pregunta: data.pregunta,
-            usuario_nombre: data.usuario_nombre || 'Usuario Anónimo',
-            usuario_email: data.usuario_email || null,
-            usuario_id: data.usuario_id || null,
-            region: data.region || 'Nora',
-            asistente_nombre: data.asistente_nombre || 'NORA',
-          };
+      // Preparar payload con clasificación automática y valores por defecto
+      const payload = prepareConversationData(data);
 
       if (DEBUG_MODE) {
-        console.log('[DEBUG] Capturando conversación:');
-        console.log('  - Endpoint:', endpoint);
-        console.log('  - Tiene respuesta:', hasAnswer);
-        console.log('  - Payload:', payload);
+        console.log('[DEBUG] 📊 Capturando conversación con categorización:');
+        console.log('  - Pregunta:', payload.pregunta);
+        console.log('  - Categoría detectada:', payload.categoria);
+        console.log('  - Pregunta Base:', payload.pregunta_base);
+        console.log('  - Usuario:', payload.usuario_nombre);
+        console.log('  - Fuente:', payload.fuente);
+        console.log('  - Tipo de interacción:', payload.tipo_interaccion);
       }
 
       const response = await apiClient.post(endpoint, payload);
 
       if (DEBUG_MODE) {
-        console.log('[DEBUG] Respuesta del servidor:', response.data);
+        console.log('[DEBUG] ✅ Conversación capturada exitosamente:', response.data);
       }
 
       return response.data;

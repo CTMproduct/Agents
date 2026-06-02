@@ -1,6 +1,18 @@
 const { Pool } = require('pg');
 
 const POSTGRES_URL = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+
+// Log PostgreSQL configuration on startup
+console.log('🔍 PostgreSQL Configuration:');
+console.log(`   POSTGRES_URL exists: ${!!POSTGRES_URL}`);
+console.log(`   DATABASE_URL exists: ${!!process.env.DATABASE_URL}`);
+console.log(`   NODE_ENV: ${process.env.NODE_ENV}`);
+if (POSTGRES_URL) {
+  // Log masked URL for security
+  const maskedUrl = POSTGRES_URL.replace(/:[^/]*@/, ':***@');
+  console.log(`   Connection URL: ${maskedUrl}`);
+}
+
 const pool = POSTGRES_URL
   ? new Pool({
       connectionString: POSTGRES_URL,
@@ -11,11 +23,15 @@ const pool = POSTGRES_URL
 let pgReady = false;
 
 async function initPostgres() {
+  console.log('🚀 Initializing PostgreSQL...');
+
   if (!pool) {
+    console.warn('❌ PostgreSQL pool is null - no connection string provided');
     return false;
   }
 
   try {
+    console.log('📡 Testing PostgreSQL connection...');
     await pool.query(`
       CREATE TABLE IF NOT EXISTS conversations (
         id TEXT PRIMARY KEY,
@@ -52,10 +68,15 @@ async function initPostgres() {
     `);
 
     pgReady = true;
-    console.log('✅ PostgreSQL connected and conversation table initialized');
+    console.log('✅ PostgreSQL connection successful');
+    console.log('✅ Conversation table initialized with all columns');
+    console.log('✅ PostgreSQL ready for use');
     return true;
   } catch (error) {
-    console.error('❌ PostgreSQL initialization error:', error.message);
+    console.error('❌ PostgreSQL initialization failed');
+    console.error('   Error:', error.message);
+    console.error('   Code:', error.code);
+    pgReady = false;
     return false;
   }
 }
@@ -66,8 +87,16 @@ function isPostgresConnected() {
 
 async function saveConversationPostgres(data) {
   if (!pool) {
+    console.error('❌ saveConversationPostgres: Pool is null');
     throw new Error('PostgreSQL no configurado');
   }
+
+  if (!pgReady) {
+    console.error('❌ saveConversationPostgres: PostgreSQL not ready (pgReady=false)');
+    throw new Error('PostgreSQL not initialized');
+  }
+
+  console.log('💾 Saving conversation to PostgreSQL:', data.id);
 
   const query = `
     INSERT INTO conversations (
