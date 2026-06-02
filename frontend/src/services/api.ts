@@ -55,6 +55,18 @@ const isCTMBackend =
   import.meta.env.VITE_BACKEND_TYPE === 'ctm' ||
   API_BASE_URL.includes('ctm-analyzer-backend');
 
+/**
+ * Build absolute URL for API endpoints
+ * - If VITE_API_BASE_URL is set, use it as base
+ * - If empty, use relative paths (same domain)
+ */
+function buildUrl(path: string): string {
+  if (!API_BASE_URL) return path; // Use relative path (same domain)
+  const cleanBase = API_BASE_URL.replace(/\/$/, ''); // Remove trailing slash
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${cleanBase}${cleanPath}`;
+}
+
 interface CTMConversacion {
   id: string;
   score_precision: number;
@@ -389,6 +401,65 @@ export const apiService = {
     } catch (error) {
       console.error('Error generating chat response:', error);
       return null;
+    }
+  },
+
+  /**
+   * Captura una conversación determinando automáticamente el endpoint correcto
+   * - Si respuesta está vacía → POST /api/chat-capturar (backend genera respuesta)
+   * - Si respuesta está llena → POST /api/capturar-conversacion (solo guarda)
+   */
+  async captureConversation(data: any): Promise<any> {
+    try {
+      const hasAnswer = Boolean(data?.respuesta && data.respuesta.trim());
+
+      const endpoint = hasAnswer
+        ? buildUrl('/api/capturar-conversacion')
+        : buildUrl('/api/chat-capturar');
+
+      const payload = hasAnswer
+        ? {
+            asistente_nombre: data.asistente_nombre || 'NORA',
+            pregunta: data.pregunta,
+            respuesta: data.respuesta,
+            usuario_nombre: data.usuario_nombre || 'Usuario Anónimo',
+            usuario_email: data.usuario_email || null,
+            usuario_id: data.usuario_id || null,
+            region: data.region || 'Nora',
+            status: 'capturada',
+          }
+        : {
+            pregunta: data.pregunta,
+            usuario_nombre: data.usuario_nombre || 'Usuario Anónimo',
+            usuario_email: data.usuario_email || null,
+            usuario_id: data.usuario_id || null,
+            region: data.region || 'Nora',
+            asistente_nombre: data.asistente_nombre || 'NORA',
+          };
+
+      if (DEBUG_MODE) {
+        console.log('[DEBUG] Capturando conversación:');
+        console.log('  - Endpoint:', endpoint);
+        console.log('  - Tiene respuesta:', hasAnswer);
+        console.log('  - Payload:', payload);
+      }
+
+      const response = await apiClient.post(endpoint, payload);
+
+      if (DEBUG_MODE) {
+        console.log('[DEBUG] Respuesta del servidor:', response.data);
+      }
+
+      return response.data;
+    } catch (error) {
+      const errorMsg = error instanceof AxiosError
+        ? `${error.response?.status || 'Error'}: ${error.response?.statusText || error.message}`
+        : error instanceof Error ? error.message : 'Error desconocido';
+
+      console.error('❌ Error capturando conversación:', errorMsg);
+      console.error('Detalles completos:', error);
+
+      throw error;
     }
   },
 };

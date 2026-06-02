@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://ctm-analyzer-backend-production.up.railway.app",
+      "url": "https://agents-production-5abe.up.railway.app",
       "description": "Production backend on Railway"
     }
   ],

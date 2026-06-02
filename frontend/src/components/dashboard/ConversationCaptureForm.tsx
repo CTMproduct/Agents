@@ -3,7 +3,13 @@ import { apiService } from '../../services/api';
 import type { CaptureConversationPayload, CaptureConversationResponse } from '../../types';
 import '../../styles/ConversationCaptureForm.css';
 
-export const ConversationCaptureForm: React.FC = () => {
+interface ConversationCaptureFormProps {
+  onCaptureSuccess?: () => Promise<void>;
+}
+
+export const ConversationCaptureForm: React.FC<ConversationCaptureFormProps> = ({
+  onCaptureSuccess
+}) => {
   const [pregunta, setPregunta] = useState('');
   const [respuesta, setRespuesta] = useState('');
   const [usuarioNombre, setUsuarioNombre] = useState('');
@@ -59,10 +65,27 @@ export const ConversationCaptureForm: React.FC = () => {
       } else {
         setResponseData(response);
         setMessage(response.mensaje || response.message || 'Conversación enviada correctamente.');
+
+        // Limpiar formulario después de envío exitoso
+        setPregunta('');
+        setRespuesta('');
+        setUsuarioNombre('');
+        setUsuarioEmail('');
+        setUsuarioId('');
+
+        // Refrescar métricas del dashboard si hay callback
+        if (onCaptureSuccess) {
+          try {
+            await onCaptureSuccess();
+          } catch (err) {
+            console.warn('⚠️ No se pudieron refrescar las métricas:', err);
+          }
+        }
       }
     } catch (caught) {
-      setError('Error inesperado al enviar la conversación.');
-      console.error(caught);
+      const errorMsg = caught instanceof Error ? caught.message : 'Error desconocido';
+      setError(`Error al enviar: ${errorMsg}`);
+      console.error('Error capturando conversación:', caught);
     } finally {
       setLoading(false);
     }

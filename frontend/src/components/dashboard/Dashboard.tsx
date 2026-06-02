@@ -113,7 +113,12 @@ export const Dashboard: React.FC = () => {
             </div>
 
             <div className="dashboard__chart-container">
-              <ConversationCaptureForm />
+              <ConversationCaptureForm
+                onCaptureSuccess={async () => {
+                  // Refrescar métricas después de capturar
+                  await refetch();
+                }}
+              />
             </div>
           </section>
 
