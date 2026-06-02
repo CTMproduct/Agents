@@ -5,21 +5,13 @@ const express = require('express');
 const cors = require('cors');
 const OpenAI = require('openai');
 
-// Database imports
-const { connectDB, isConnected } = require('./database/mongodb');
+// Database imports - PostgreSQL only
 const {
   initPostgres,
   saveConversationPostgres,
   getConversationsPostgres,
   isPostgresConnected,
 } = require('./database/postgres');
-const {
-  Conversation,
-  Metrics,
-  ConversationHistory,
-  PerformanceHistory,
-  HallucinationHistory,
-} = require('./models');
 
 const DATA_DIR = path.resolve(__dirname, './data');
 const FALLBACK_FILE = path.join(DATA_DIR, 'fallback-conversations.json');
@@ -145,7 +137,7 @@ const fallbackStorage = {
 
 loadFallbackStorage();
 
-// Helper function to save conversation (MongoDB or memory fallback)
+// Helper function to save conversation (PostgreSQL only)
 async function saveConversation(data) {
   try {
     if (!data.id) {
@@ -156,20 +148,11 @@ async function saveConversation(data) {
     }
 
     console.log('🔍 Debug: isPostgresConnected =', isPostgresConnected());
-    console.log('🔍 Debug: isConnected (MongoDB) =', isConnected());
 
     if (isPostgresConnected()) {
       console.log('💾 Saving to PostgreSQL...');
       const conversation = await saveConversationPostgres(data);
       console.log('✅ Saved to PostgreSQL successfully');
-      return conversation;
-    }
-
-    if (isConnected()) {
-      console.log('💾 Saving to MongoDB...');
-      const conversation = new Conversation(data);
-      await conversation.save();
-      console.log('✅ Saved to MongoDB successfully');
       return conversation;
     }
   } catch (error) {
@@ -182,18 +165,11 @@ async function saveConversation(data) {
   return data;
 }
 
-// Helper function to get conversations
+// Helper function to get conversations (PostgreSQL only)
 async function getConversations(limit = 100) {
   try {
     if (isPostgresConnected()) {
       return await getConversationsPostgres(limit);
-    }
-
-    if (isConnected()) {
-      return await Conversation.find()
-        .sort({ timestamp: -1 })
-        .limit(limit)
-        .exec();
     }
   } catch (error) {
     console.warn('⚠️  Database query failed, using memory fallback:', error.message);
@@ -208,10 +184,8 @@ app.get('/api/status', (req, res) => {
     status: 'online',
     message: 'Nora API Backend is running',
     database: isPostgresConnected()
-      ? 'PostgreSQL'
-      : isConnected()
-      ? 'MongoDB'
-      : 'Memory (fallback)',
+      ? 'PostgreSQL ✅'
+      : 'Memory (fallback) ⚠️',
     endpoints: {
       metrics: '/api/metrics',
       health: '/health',
@@ -630,8 +604,8 @@ app.get('/api/conversations/history', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 24;
     
-    if (isConnected()) {
-      const history = await ConversationHistory.find()
+    if (false) // MongoDB removed {
+      // MongoDB removed
         .sort({ timestamp: -1 })
         .limit(limit)
         .exec();
@@ -655,8 +629,8 @@ app.get('/api/performance/history', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 24;
     
-    if (isConnected()) {
-      const history = await PerformanceHistory.find()
+    if (false) // MongoDB removed {
+      // MongoDB removed
         .sort({ timestamp: -1 })
         .limit(limit)
         .exec();
@@ -680,8 +654,8 @@ app.get('/api/hallucinations/history', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 7;
     
-    if (isConnected()) {
-      const history = await HallucinationHistory.find()
+    if (false) // MongoDB removed {
+      // MongoDB removed
         .sort({ date: -1 })
         .limit(limit)
         .exec();
@@ -708,8 +682,8 @@ app.get('/api/conversations/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
-    if (isConnected()) {
-      const conversation = await Conversation.findById(id).exec();
+    if (false) // MongoDB removed {
+      // MongoDB removed
       if (!conversation) {
         return res.status(404).json({ status: 'error', error: 'Conversación no encontrada' });
       }
@@ -843,14 +817,15 @@ function convertToCSV(conversations) {
 // ============================================
 const startServer = async () => {
   try {
+    // Initialize PostgreSQL (required)
     const postgresReady = await initPostgres();
     if (!postgresReady) {
-      await connectDB();
+      console.warn('⚠️  PostgreSQL not available, will use memory fallback');
     }
 
     app.listen(PORT, () => {
       console.log(`✅ Nora Backend running on http://localhost:${PORT}`);
-      console.log(`📊 Database: ${isPostgresConnected() ? 'PostgreSQL' : isConnected() ? 'MongoDB' : 'Memory Storage (Fallback)'}`);
+      console.log(`📊 Database: ${isPostgresConnected() ? 'PostgreSQL ✅' : 'Memory Storage (Fallback) ⚠️'}`);
       console.log(`🤖 POST /api/chat - Generate GPT response`);
       console.log(`📝 POST /api/capturar-conversacion - Capture conversations`);
       console.log(`📊 GET /api/metrics - Get metrics`);
