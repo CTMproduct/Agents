@@ -286,7 +286,7 @@ app.post('/api/chat-capturar', async (req, res) => {
       modelo: OPENAI_MODEL,
       conversationId: savedConversation.id || savedConversation._id,
       score_promedio: savedConversation.score_promedio,
-      database: isConnected() ? 'MongoDB' : 'Memory',
+      database: isPostgresConnected() ? 'PostgreSQL' : 'Memory',
     });
   } catch (error) {
     console.error('Error generating and capturing conversation:', error);
@@ -362,8 +362,6 @@ app.post('/api/capturar-conversacion', async (req, res) => {
 
     const database = isPostgresConnected()
       ? 'PostgreSQL'
-      : isConnected()
-      ? 'MongoDB'
       : 'Memory';
 
     res.status(200).json({
@@ -392,11 +390,9 @@ app.get('/api/conversations', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 100;
     const conversations = await getConversations(limit);
-    
+
     const database = isPostgresConnected()
       ? 'PostgreSQL'
-      : isConnected()
-      ? 'MongoDB'
       : 'Memory';
 
     res.json({
@@ -526,10 +522,8 @@ app.get('/api/metrics', async (req, res) => {
         factualAccuracy,
         byTopic,
       },
-      database: isPostgresConnected() 
-        ? 'PostgreSQL' 
-        : isConnected() 
-        ? 'MongoDB' 
+      database: isPostgresConnected()
+        ? 'PostgreSQL'
         : 'Memory',
       lastUpdated: new Date(),
     });
@@ -675,13 +669,11 @@ app.get('/api/conversations/:id', async (req, res) => {
 // Health Check
 // ============================================
 app.get('/health', (req, res) => {
-  res.json({
+  res.status(200).json({
     status: 'ok',
-    timestamp: new Date(),
+    timestamp: new Date().toISOString(),
     database: isPostgresConnected()
       ? 'PostgreSQL Connected'
-      : isConnected()
-      ? 'MongoDB Connected'
       : 'Using Memory Storage',
     conversationsCaptured: fallbackStorage.conversations.length,
   });
