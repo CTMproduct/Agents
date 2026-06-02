@@ -1,6 +1,6 @@
 import React from 'react';
-import { useBackendHealth } from '../hooks/useBackendHealth';
-import '../styles/BackendStatus.css';
+import { useBackendHealth } from '../../hooks/useBackendHealth';
+import '../../styles/BackendStatus.css';
 
 export const BackendStatus: React.FC = () => {
   const { isHealthy, isChecking, error, retry, lastCheck } = useBackendHealth();

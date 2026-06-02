@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { apiService } from '../services/api';
-import type { CaptureConversationPayload, CaptureConversationResponse } from '../types';
-import '../styles/ConversationCaptureForm.css';
+import { apiService } from '../../services/api';
+import type { CaptureConversationPayload, CaptureConversationResponse } from '../../types';
+import '../../styles/ConversationCaptureForm.css';
 
 export const ConversationCaptureForm: React.FC = () => {
   const [pregunta, setPregunta] = useState('');

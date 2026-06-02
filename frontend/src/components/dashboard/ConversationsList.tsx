@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { apiService } from '../services/api';
-import '../styles/ConversationsList.css';
+import { apiService } from '../../services/api';
+import '../../styles/ConversationsList.css';
 
 interface Conversation {
   _id?: string;

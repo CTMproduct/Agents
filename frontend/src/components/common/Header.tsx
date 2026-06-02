@@ -1,6 +1,6 @@
 import React from 'react';
-import { BackendStatus } from './BackendStatus';
-import '../styles/Header.css';
+import { BackendStatus } from '../status/BackendStatus';
+import '../../styles/Header.css';
 
 interface HeaderProps {
   agentName?: string;

@@ -1,5 +1,5 @@
 import React from 'react';
-import '../styles/MetricCard.css';
+import '../../styles/MetricCard.css';
 
 interface MetricCardProps {
   title: string;

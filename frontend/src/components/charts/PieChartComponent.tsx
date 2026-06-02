@@ -1,6 +1,6 @@
 import type { FC } from 'react';
 import { PieChart, Pie, Cell, Legend, ResponsiveContainer, Tooltip } from 'recharts';
-import '../styles/Chart.css';
+import '../../styles/Chart.css';
 
 interface PieChartComponentProps {
   title: string;

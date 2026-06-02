@@ -1,14 +1,14 @@
 import React from 'react';
-import { MetricCard } from './MetricCard';
-import { Chart } from './Chart';
-import { BarChartComponent } from './BarChartComponent';
-import { PieChartComponent } from './PieChartComponent';
-import { StatusBar } from './StatusBar';
-import { Header } from './Header';
+import { MetricCard } from '../common/MetricCard';
+import { Chart } from '../charts/Chart';
+import { BarChartComponent } from '../charts/BarChartComponent';
+import { PieChartComponent } from '../charts/PieChartComponent';
+import { StatusBar } from '../common/StatusBar';
+import { Header } from '../common/Header';
 import { ConversationCaptureForm } from './ConversationCaptureForm';
-import { useMetrics } from '../hooks/useMetrics';
-import { useConversationHistory, usePerformanceHistory, useHallucinationHistory } from '../hooks/useChartData';
-import '../styles/Dashboard.css';
+import { useMetrics } from '../../hooks/useMetrics';
+import { useConversationHistory, usePerformanceHistory, useHallucinationHistory } from '../../hooks/useChartData';
+import '../../styles/Dashboard.css';
 import { ConversationsList } from './ConversationsList';
 
 export const Dashboard: React.FC = () => {
