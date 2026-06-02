@@ -8,6 +8,7 @@ import { Header } from '../common/Header';
 import { ConversationCaptureForm } from './ConversationCaptureForm';
 import { useMetrics } from '../../hooks/useMetrics';
 import { useConversationHistory, usePerformanceHistory, useHallucinationHistory } from '../../hooks/useChartData';
+import { normalizeByTopic } from '../../services/api';
 import '../../styles/Dashboard.css';
 import { ConversationsList } from './ConversationsList';
 
@@ -247,16 +248,9 @@ export const Dashboard: React.FC = () => {
               <div className="dashboard__chart-container dashboard__chart-container--half">
                 <PieChartComponent
                   title="Alucinaciones por Tema"
-                  data={
-                    metrics?.hallucination?.byTopic && Object.keys(metrics.hallucination.byTopic).length > 0
-                      ? Object.entries(metrics.hallucination.byTopic).map(([key, value]) => ({
-                          name: key,
-                          value: value,
-                        }))
-                      : []
-                  }
-                  dataKey="value"
-                  nameKey="name"
+                  data={normalizeByTopic(metrics?.hallucination?.byTopic)}
+                  dataKey="count"
+                  nameKey="topic"
                   colors={['#e74c3c', '#3498db', '#f39c12', '#27ae60']}
                   loading={false}
                 />

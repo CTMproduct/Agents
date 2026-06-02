@@ -11,6 +11,45 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 const ASSISTANT_NAME = import.meta.env.VITE_ASSISTANT_NAME || 'NORA';
 const DEBUG_MODE = import.meta.env.VITE_DEBUG_MODE === 'true';
 
+// ============================================
+// NORMALIZATION HELPERS FOR RECHARTS
+// ============================================
+
+/**
+ * Ensure value is an array, return empty array otherwise
+ */
+function toArray<T>(value: any): T[] {
+  return Array.isArray(value) ? value : [];
+}
+
+/**
+ * Normalize API responses that may be arrays or wrapped in containers
+ */
+function normalizeArrayResponse(response: any): any[] {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.data)) return response.data;
+  return [];
+}
+
+/**
+ * Convert object { topic: count } to array for Recharts
+ * Input: { "Travel Info": 5, "Flight Details": 12 }
+ * Output: [{ topic: "Travel Info", count: 5 }, { topic: "Flight Details", count: 12 }]
+ */
+function normalizeByTopic(byTopic: any): Array<{ topic: string; count: number }> {
+  if (Array.isArray(byTopic)) {
+    return byTopic.map(item => ({
+      topic: String(item?.topic || item?.name || ''),
+      count: Number(item?.count || item?.value || 0),
+    }));
+  }
+
+  return Object.entries(byTopic || {}).map(([topic, count]) => ({
+    topic: String(topic),
+    count: Number(count) || 0,
+  }));
+}
+
 // True when using CTM backend format (set VITE_BACKEND_TYPE=ctm)
 const isCTMBackend =
   import.meta.env.VITE_BACKEND_TYPE === 'ctm' ||
@@ -354,4 +393,5 @@ export const apiService = {
   },
 };
 
-
+// Export normalization helpers for use in components
+export { toArray, normalizeArrayResponse, normalizeByTopic };
