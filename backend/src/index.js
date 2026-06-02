@@ -87,7 +87,8 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    callback(new Error(`CORS policy no permite origen: ${origin}`));
+    console.warn(`⚠️ CORS blocked origin: ${origin}`);
+    return callback(null, false);
   },
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
