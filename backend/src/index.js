@@ -6,13 +6,13 @@ const cors = require('cors');
 const OpenAI = require('openai');
 
 // Database imports
-const { connectDB, isConnected } = require('./db');
+const { connectDB, isConnected } = require('./database/mongodb');
 const {
   initPostgres,
   saveConversationPostgres,
   getConversationsPostgres,
   isPostgresConnected,
-} = require('./postgres');
+} = require('./database/postgres');
 const {
   Conversation,
   Metrics,
@@ -21,7 +21,7 @@ const {
   HallucinationHistory,
 } = require('./models');
 
-const DATA_DIR = path.resolve(__dirname, 'data');
+const DATA_DIR = path.resolve(__dirname, './data');
 const FALLBACK_FILE = path.join(DATA_DIR, 'fallback-conversations.json');
 
 function loadFallbackStorage() {
