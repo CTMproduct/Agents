@@ -248,7 +248,7 @@ export const Dashboard: React.FC = () => {
                 <PieChartComponent
                   title="Alucinaciones por Tema"
                   data={
-                    metrics?.hallucination.byTopic
+                    metrics?.hallucination?.byTopic && Object.keys(metrics.hallucination.byTopic).length > 0
                       ? Object.entries(metrics.hallucination.byTopic).map(([key, value]) => ({
                           name: key,
                           value: value,

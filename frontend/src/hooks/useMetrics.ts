@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { AgentMetrics } from '../types';
 import { apiService } from '../services/api';
+import { DEFAULT_METRICS, mergeMetricsWithDefaults } from '../constants/defaults';
 
 interface UseMetricsReturn {
   metrics: AgentMetrics;
@@ -10,30 +11,6 @@ interface UseMetricsReturn {
   isRealtime: boolean;
   setIsRealtime: (value: boolean) => void;
 }
-
-const DEFAULT_METRICS: AgentMetrics = {
-  conversations: {
-    total: 0,
-    today: 0,
-    averageDuration: 0,
-    averageSatisfaction: 0,
-    trend: 0,
-  },
-  performance: {
-    uptime: 0,
-    averageLatency: 0,
-    errorRate: 0,
-    requestsPerMinute: 0,
-    peakLatency: 0,
-  },
-  hallucination: {
-    rate: 0,
-    count: 0,
-    factualAccuracy: 0,
-    byTopic: {},
-  },
-  lastUpdated: new Date(),
-};
 
 export const useMetrics = (
   refreshInterval: number = 30000, // 30 seconds default
@@ -49,11 +26,15 @@ export const useMetrics = (
       setLoading(true);
       setError(null);
       const data = await apiService.getMetrics();
-      setMetrics(data);
+      // Merge with defaults to ensure all properties exist
+      const mergedMetrics = mergeMetricsWithDefaults(data);
+      setMetrics(mergedMetrics);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error fetching metrics';
       setError(errorMessage);
       console.error('Failed to fetch metrics:', err);
+      // Show defaults if fetch fails
+      setMetrics(DEFAULT_METRICS);
     } finally {
       setLoading(false);
     }
