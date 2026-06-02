@@ -108,7 +108,7 @@ app.use(express.json());
 // ============================================
 // STATIC FILES - Serve Frontend (SPA)
 // ============================================
-const frontendDistPath = path.join(__dirname, '..', 'frontend', 'dist');
+const frontendDistPath = path.join(__dirname, '..', '..', 'frontend', 'dist');
 if (fs.existsSync(frontendDistPath)) {
   console.log('📁 Serving static files from:', frontendDistPath);
   app.use(express.static(frontendDistPath));
