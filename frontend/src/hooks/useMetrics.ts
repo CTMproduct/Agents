@@ -3,7 +3,7 @@ import type { AgentMetrics } from '../types';
 import { apiService } from '../services/api';
 
 interface UseMetricsReturn {
-  metrics: AgentMetrics | null;
+  metrics: AgentMetrics;
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
@@ -11,11 +11,35 @@ interface UseMetricsReturn {
   setIsRealtime: (value: boolean) => void;
 }
 
+const DEFAULT_METRICS: AgentMetrics = {
+  conversations: {
+    total: 0,
+    today: 0,
+    averageDuration: 0,
+    averageSatisfaction: 0,
+    trend: 0,
+  },
+  performance: {
+    uptime: 0,
+    averageLatency: 0,
+    errorRate: 0,
+    requestsPerMinute: 0,
+    peakLatency: 0,
+  },
+  hallucination: {
+    rate: 0,
+    count: 0,
+    factualAccuracy: 0,
+    byTopic: {},
+  },
+  lastUpdated: new Date(),
+};
+
 export const useMetrics = (
   refreshInterval: number = 30000, // 30 seconds default
   enableRealtime: boolean = true
 ): UseMetricsReturn => {
-  const [metrics, setMetrics] = useState<AgentMetrics | null>(null);
+  const [metrics, setMetrics] = useState<AgentMetrics>(DEFAULT_METRICS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isRealtime, setIsRealtime] = useState(enableRealtime);

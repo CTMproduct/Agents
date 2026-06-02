@@ -50,7 +50,7 @@ export const Dashboard: React.FC = () => {
         onRefresh={refetch}
       />
 
-      {metricsLoading && !metrics ? (
+      {metricsLoading ? (
         <div className="dashboard__loading">
           <div className="dashboard__spinner">Cargando dashboard...</div>
         </div>
