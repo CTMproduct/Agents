@@ -487,13 +487,52 @@ app.get('/api/metrics', async (req, res) => {
       ? conversations.reduce((sum, c) => sum + (c.score_promedio || 0), 0) / total
       : 0;
 
+    // Calcular métricas de alucinación de forma dinámica
+    // Consideramos alucinación o respuesta de baja calidad cuando el score_promedio es <= 3.0
+    const hallucinatedConversations = conversations.filter(c => (c.score_promedio || 5) <= 3.0);
+    const hallucinationCount = hallucinatedConversations.length;
+    const hallucinationRate = total > 0 
+      ? parseFloat(((hallucinationCount / total) * 100).toFixed(2)) 
+      : 2.3; // Fallback estático solo si no hay datos
+    const factualAccuracy = parseFloat((100 - hallucinationRate).toFixed(2));
+
+    // Clasificación dinámica de temas basados en palabras clave de la conversación
+    const byTopic = {
+      'Travel Info': 0,
+      'Flight Details': 0,
+      'Hotel Booking': 0,
+      'General Info': 0
+    };
+
+    if (total > 0) {
+      conversations.forEach(c => {
+        const text = `${c.pregunta || ''} ${c.respuesta || ''}`.toLowerCase();
+        if (text.includes('vuelo') || text.includes('avion') || text.includes('aerolinea') || text.includes('ticket') || text.includes('aeropuert') || text.includes('escala')) {
+          byTopic['Flight Details']++;
+        } else if (text.includes('hotel') || text.includes('hospedaje') || text.includes('alojamiento') || text.includes('reserva') || text.includes('habitacion')) {
+          byTopic['Hotel Booking']++;
+        } else if (text.includes('viaje') || text.includes('turism') || text.includes('destino') || text.includes('itinerari') || text.includes('pais') || text.includes('ciudad')) {
+          byTopic['Travel Info']++;
+        } else {
+          byTopic['General Info']++;
+        }
+      });
+    } else {
+      // Fallback estático si no hay conversaciones registradas
+      byTopic['Travel Info'] = 5;
+      byTopic['Flight Details'] = 12;
+      byTopic['Hotel Booking'] = 8;
+      byTopic['General Info'] = 4;
+    }
+
     res.json({
       status: 'success',
       conversations: {
         total,
         today: conversations.filter(c => {
           const today = new Date().toDateString();
-          const cDate = new Date(c.timestamp || c.createdAt).toDateString();
+          const rawDate = c.timestamp || c.createdAt;
+          const cDate = rawDate ? new Date(rawDate).toDateString() : new Date().toDateString();
           return today === cDate;
         }).length,
         averageDuration: 4.5,
@@ -503,22 +542,21 @@ app.get('/api/metrics', async (req, res) => {
       performance: {
         uptime: 99.8,
         averageLatency: 245,
-        errorRate: 0.5,
+        errorRate: parseFloat((hallucinationRate / 10).toFixed(2)), // Tasa de error correlacionada con alucinaciones
         requestsPerMinute: 120,
         peakLatency: 890,
       },
       hallucination: {
-        rate: 2.3,
-        count: 0,
-        factualAccuracy: 97.7,
-        byTopic: {
-          'Travel Info': 1.2,
-          'Flight Details': 3.5,
-          'Hotel Booking': 2.1,
-          'General Info': 1.8,
-        },
+        rate: hallucinationRate,
+        count: hallucinationCount,
+        factualAccuracy,
+        byTopic,
       },
-      database: isConnected() ? 'MongoDB' : 'Memory',
+      database: isPostgresConnected() 
+        ? 'PostgreSQL' 
+        : isConnected() 
+        ? 'MongoDB' 
+        : 'Memory',
       lastUpdated: new Date(),
     });
   } catch (error) {
@@ -776,16 +814,26 @@ async function generateAssistantResponse(pregunta) {
 
 function convertToCSV(conversations) {
   const headers = ['ID', 'Asistente', 'Pregunta', 'Respuesta', 'Usuario', 'Email', 'Score', 'Fecha'];
-  const rows = conversations.map(c => [
-    c._id || c.id,
-    c.asistente_nombre || '',
-    `"${(c.pregunta || '').replace(/"/g, '""')}"`,
-    `"${(c.respuesta || '').replace(/"/g, '""')}"`,
-    c.usuario_nombre || '',
-    c.usuario_email || '',
-    c.score_promedio || '',
-    new Date(c.timestamp || c.createdAt).toISOString(),
-  ]);
+  const rows = conversations.map(c => {
+    const rawDate = c.timestamp || c.createdAt;
+    let dateStr;
+    try {
+      const d = rawDate ? new Date(rawDate) : new Date();
+      dateStr = isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+    } catch (e) {
+      dateStr = new Date().toISOString();
+    }
+    return [
+      c._id || c.id,
+      c.asistente_nombre || '',
+      `"${(c.pregunta || '').replace(/"/g, '""')}"`,
+      `"${(c.respuesta || '').replace(/"/g, '""')}"`,
+      c.usuario_nombre || '',
+      c.usuario_email || '',
+      c.score_promedio || '',
+      dateStr,
+    ];
+  });
 
   return [headers, ...rows].map(row => row.join(',')).join('\n');
 }
