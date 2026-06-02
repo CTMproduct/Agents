@@ -286,7 +286,7 @@ app.post('/api/chat-capturar', async (req, res) => {
       modelo: OPENAI_MODEL,
       conversationId: savedConversation.id || savedConversation._id,
       score_promedio: savedConversation.score_promedio,
-      database: isConnected() ? 'MongoDB' : 'Memory',
+      database: isPostgresConnected() ? 'PostgreSQL' : 'Memory',
     });
   } catch (error) {
     console.error('Error generating and capturing conversation:', error);
@@ -360,11 +360,7 @@ app.post('/api/capturar-conversacion', async (req, res) => {
 
     const savedConversation = await saveConversation(conversationData);
 
-    const database = isPostgresConnected()
-      ? 'PostgreSQL'
-      : isConnected()
-      ? 'MongoDB'
-      : 'Memory';
+    const database = isPostgresConnected() ? 'PostgreSQL' : 'Memory';
 
     res.status(200).json({
       status: 'success',
@@ -393,11 +389,7 @@ app.get('/api/conversations', async (req, res) => {
     const limit = parseInt(req.query.limit) || 100;
     const conversations = await getConversations(limit);
     
-    const database = isPostgresConnected()
-      ? 'PostgreSQL'
-      : isConnected()
-      ? 'MongoDB'
-      : 'Memory';
+    const database = isPostgresConnected() ? 'PostgreSQL' : 'Memory';
 
     res.json({
       status: 'success',
@@ -526,11 +518,7 @@ app.get('/api/metrics', async (req, res) => {
         factualAccuracy,
         byTopic,
       },
-      database: isPostgresConnected() 
-        ? 'PostgreSQL' 
-        : isConnected() 
-        ? 'MongoDB' 
-        : 'Memory',
+      database: isPostgresConnected() ? 'PostgreSQL' : 'Memory',
       lastUpdated: new Date(),
     });
   } catch (error) {
@@ -678,11 +666,7 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date(),
-    database: isPostgresConnected()
-      ? 'PostgreSQL Connected'
-      : isConnected()
-      ? 'MongoDB Connected'
-      : 'Using Memory Storage',
+    database: isPostgresConnected() ? 'PostgreSQL Connected' : 'Using Memory Storage',
     conversationsCaptured: fallbackStorage.conversations.length,
   });
 });
