@@ -102,20 +102,50 @@ console.log(`  FRONTEND_URL: ${FRONTEND_URL}`);
 console.log(`  ALLOWED_ORIGINS: ${allowedOrigins.join(', ')}`);
 console.log(`  ALLOW_LOCAL_DEBUG: ${process.env.ALLOW_LOCAL_DEBUG === 'true'}`);
 
-// Middleware
-app.use(cors(corsOptions));
-app.use(express.json());
+// ============================================
+// STATIC FILES - Serve Frontend FIRST
+// ============================================
+const frontendDistPath = path.resolve(__dirname, '..', '..', 'frontend', 'dist');
+const frontendAssetsPath = path.join(frontendDistPath, 'assets');
 
-// ============================================
-// STATIC FILES - Serve Frontend (SPA)
-// ============================================
-const frontendDistPath = path.join(__dirname, '..', '..', 'frontend', 'dist');
+console.log('📁 Frontend dist path:', frontendDistPath);
+console.log('📁 Frontend assets path:', frontendAssetsPath);
+console.log('📁 Dist exists:', fs.existsSync(frontendDistPath));
+console.log('📁 Assets exists:', fs.existsSync(frontendAssetsPath));
+
+if (fs.existsSync(frontendAssetsPath)) {
+  console.log('📦 Serving Vite assets from:', frontendAssetsPath);
+
+  app.use('/assets', express.static(frontendAssetsPath, {
+    immutable: true,
+    maxAge: '1y',
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.js')) {
+        res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+      }
+
+      if (filePath.endsWith('.css')) {
+        res.setHeader('Content-Type', 'text/css; charset=utf-8');
+      }
+    },
+  }));
+} else {
+  console.warn('⚠️  Frontend assets folder not found at:', frontendAssetsPath);
+}
+
 if (fs.existsSync(frontendDistPath)) {
   console.log('📁 Serving static files from:', frontendDistPath);
-  app.use(express.static(frontendDistPath));
+
+  app.use(express.static(frontendDistPath, {
+    index: false,
+  }));
 } else {
   console.warn('⚠️  Frontend dist folder not found at:', frontendDistPath);
 }
+
+// Middleware API después de servir frontend/assets
+app.use(cors(corsOptions));
+app.use(express.json());
 
 // OpenAI Client
 if (!process.env.OPENAI_API_KEY) {
@@ -685,7 +715,11 @@ app.get('/health', (req, res) => {
 // ============================================
 app.get('*', (req, res) => {
   // Don't serve index.html for API routes or health check
-  if (req.path.startsWith('/api') || req.path === '/health') {
+  if (
+    req.path.startsWith('/api') ||
+    req.path === '/health' ||
+    req.path.startsWith('/assets')
+  ) {
     res.status(404).json({
       status: 'error',
       message: `Endpoint no encontrado: ${req.method} ${req.path}`,
