@@ -25,9 +25,56 @@ try {
 } catch { /* noop */ }
 
 import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 import { IntakeOutputSchema } from '../src/agents/schemas';
 import { zodToJsonSchema } from '../src/agents/zod-to-json-schema';
 import { INTAKE_SYSTEM_PROMPT } from '../src/agents/intake-agent.prompt';
+
+/** Mismo criterio que LlmProvider: ANTHROPIC_API_KEY manda; si no hay, OPENAI_API_KEY. */
+function makeCallModel(system: string): { model: string; call: (conversation: string) => Promise<unknown> } {
+  const user = (c: string) => `Conversacion:\n\n${c}`;
+  if (process.env.ANTHROPIC_API_KEY) {
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const model = process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-5';
+    return {
+      model,
+      call: async (conversation) => {
+        const resp = await client.messages.create({
+          model,
+          max_tokens: 1500,
+          system,
+          messages: [{ role: 'user', content: user(conversation) }],
+          tools: [{ name: 'registrar_analisis_intake', description: 'Analisis estructurado', input_schema: zodToJsonSchema() as never }],
+          tool_choice: { type: 'tool', name: 'registrar_analisis_intake' },
+        });
+        const toolUse = resp.content.find((b) => b.type === 'tool_use');
+        return toolUse && toolUse.type === 'tool_use' ? toolUse.input : null;
+      },
+    };
+  }
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error('Falta ANTHROPIC_API_KEY u OPENAI_API_KEY en .env');
+  }
+  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const model = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
+  return {
+    model,
+    call: async (conversation) => {
+      const resp = await client.chat.completions.create({
+        model,
+        max_tokens: 1500,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: user(conversation) },
+        ],
+        tools: [{ type: 'function', function: { name: 'registrar_analisis_intake', description: 'Analisis estructurado', parameters: zodToJsonSchema() } }],
+        tool_choice: { type: 'function', function: { name: 'registrar_analisis_intake' } },
+      });
+      const call = resp.choices[0]?.message?.tool_calls?.[0];
+      return call && call.type === 'function' ? JSON.parse(call.function.arguments) : null;
+    },
+  };
+}
 
 interface EvalCase {
   id: string;
@@ -46,9 +93,9 @@ async function main() {
     .map((l) => JSON.parse(l));
 
   console.log(`Eval harness: ${cases.length} casos desde ${path.basename(datasetPath)}\n`);
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  const model = process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-5';
   const system = INTAKE_SYSTEM_PROMPT.replace('{{TODAY}}', new Date().toISOString().slice(0, 10));
+  const { model, call } = makeCallModel(system);
+  console.log(`Modelo: ${model}\n`);
 
   const fields = ['intent', 'customerType', 'destination', 'paxAdults', 'paxChildren', 'escalateToHuman'];
   const hits: Record<string, number> = Object.fromEntries(fields.map((f) => [f, 0]));
@@ -58,16 +105,8 @@ async function main() {
 
   for (const c of cases) {
     try {
-      const resp = await client.messages.create({
-        model,
-        max_tokens: 1500,
-        system,
-        messages: [{ role: 'user', content: `Conversacion:\n\n${c.conversation}` }],
-        tools: [{ name: 'registrar_analisis_intake', description: 'Analisis estructurado', input_schema: zodToJsonSchema() as never }],
-        tool_choice: { type: 'tool', name: 'registrar_analisis_intake' },
-      });
-      const toolUse = resp.content.find((b) => b.type === 'tool_use');
-      const parsed = IntakeOutputSchema.safeParse(toolUse && toolUse.type === 'tool_use' ? toolUse.input : null);
+      const raw = await call(c.conversation);
+      const parsed = IntakeOutputSchema.safeParse(raw);
       if (!parsed.success) {
         schemaFailures++;
         failures.push(`${c.id}: output no valida con schema`);
