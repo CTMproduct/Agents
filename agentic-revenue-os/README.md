@@ -25,7 +25,7 @@ Verifica: `curl http://localhost:3000/health`
 Este entorno ya quedó listo — no repitas el arranque de 5 pasos:
 
 - **Base de datos:** se usa el PostgreSQL 17 local (servicio `postgresql-x64-17`), **no Docker**. La DB `agentic_revenue_os` y el rol `ctm` ya existen; la migración `init` y el seed L0 ya corrieron.
-- **`.env`:** ya creado con `WEBHOOK_SHARED_SECRET` propio. **Lo único pendiente es pegar `ANTHROPIC_API_KEY`** — sin ella todo funciona salvo la llamada al IntakeAgent (el pipeline audita el fallo y responde 200).
+- **`.env`:** ya creado con `WEBHOOK_SHARED_SECRET` propio y `ANTHROPIC_API_KEY` funcional (verificado en vivo el 2026-07-04: pipeline completo + evals con `claude-sonnet-5`). Si `ANTHROPIC_API_KEY` está vacía, el provider cae a `OPENAI_API_KEY`.
 - **Scripts npm:** invocan los binarios con `node` directo porque la ruta de OneDrive contiene `&` y eso rompe los shims `.cmd` de Windows (`npx`, `nest`, `jest`… fallan con `'TOURIST' is not recognized`). No los cambies de vuelta.
 - **Arrancar:** `npm run start:dev` (watch) o `npm run build && npm start` (el build emite a `dist/src/main.js`).
 - **Pipeline completo sin API key:** `test/pipeline.e2e-spec.ts` stubbea el LLM y prueba webhook → lead → tarea → aprobación → envío, incluido el gate anti-cifras.
