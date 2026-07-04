@@ -30,6 +30,13 @@ Este entorno ya quedó listo — no repitas el arranque de 5 pasos:
 - **Arrancar:** `npm run start:dev` (watch) o `npm run build && npm start` (el build emite a `dist/src/main.js`).
 - **Pipeline completo sin API key:** `test/pipeline.e2e-spec.ts` stubbea el LLM y prueba webhook → lead → tarea → aprobación → envío, incluido el gate anti-cifras.
 
+## Producción (Railway)
+
+- **URL:** https://api-production-4d5c.up.railway.app (healthcheck en `/health`)
+- Proyecto Railway `agentic-revenue-os` (workspace CTM's Projects): servicio `api` + Postgres. Las migraciones corren en cada arranque (`prisma:deploy` en el startCommand de `railway.json`).
+- **Redesplegar:** `railway up --service api --detach` desde esta carpeta (CLI ya logueado).
+- Variables (`ANTHROPIC_API_KEY`, `WEBHOOK_SHARED_SECRET` de producción, etc.) viven en Railway → servicio `api` → Variables. El secret de producción es distinto al local.
+
 ## Prueba manual del pipeline completo
 
 ```bash
