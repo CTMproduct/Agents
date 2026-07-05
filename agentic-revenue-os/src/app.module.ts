@@ -10,6 +10,8 @@ import { CrmModule } from './crm/crm.module';
 import { AgentsModule } from './agents/agents.module';
 import { WorkflowsModule } from './workflows/workflows.module';
 import { ApprovalModule } from './approval/approval.module';
+import { AuthModule } from './auth/auth.module';
+import { MarketplaceModule } from './marketplace/marketplace.module';
 
 @Module({
   imports: [
@@ -17,11 +19,13 @@ import { ApprovalModule } from './approval/approval.module';
     EventEmitterModule.forRoot(),
     PrismaModule,
     AuditModule,
+    AuthModule,
     ChannelsModule,
     CrmModule,
     AgentsModule,
     WorkflowsModule,
     ApprovalModule,
+    MarketplaceModule,
   ],
   controllers: [RootController, HealthController],
 })

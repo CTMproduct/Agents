@@ -37,6 +37,18 @@ Este entorno ya quedó listo — no repitas el arranque de 5 pasos:
 - **Redesplegar:** `railway up --service api --detach` desde esta carpeta (CLI ya logueado).
 - Variables (`ANTHROPIC_API_KEY`, `WEBHOOK_SHARED_SECRET` de producción, etc.) viven en Railway → servicio `api` → Variables. El secret de producción es distinto al local.
 
+## Marketplace multi-tenant de agentes
+
+Ademas del CRM interno de CTM, la plataforma tiene una tienda de agentes ("Calificador de Leads AI", "Seguimiento de Ventas AI", "Especialista de Cobranzas AI" + "Crea el Tuyo") que **cualquier empresa** puede activar, configurar y calificar:
+
+- **UI:** http://localhost:3000/marketplace (produccion: `/marketplace` sobre la misma URL de Railway).
+- **Auth propia (JWT):** `POST /auth/register` (crea Tenant + usuario TENANT_ADMIN), `POST /auth/login`, `GET /auth/me`. Requiere `JWT_SECRET` en `.env`.
+- **Catalogo publico:** `GET /marketplace/templates` (con rating promedio), `GET /marketplace/tools` (conectores disponibles para tenants).
+- **Por tenant (requiere Bearer token):** activar plantilla (`POST /marketplace/templates/:key/activate`), crear agente propio (`POST /marketplace/my-agents`), editar skill.md/conectores (`PATCH /marketplace/my-agents/:id`), probar (`POST /marketplace/my-agents/:id/run`), calificar (`POST /marketplace/templates/:key/review`).
+- **Admin de plataforma** (tu cuenta, rol `PLATFORM_ADMIN`): `GET /admin/tenants`, `/admin/tenant-agents`, `/admin/usage`. Se crea solo si `.env` define `PLATFORM_ADMIN_EMAIL` + `PLATFORM_ADMIN_PASSWORD` (el seed hace upsert cada vez).
+- **Aislamiento de datos:** los agentes de un tenant solo usan conectores marcados `marketplacePublic` en el `ToolRegistry` (hoy: `web_search`). `knowledge_search`/`crm_lookup` siguen siendo exclusivos del CRM interno de CTM — un tenant externo nunca puede alcanzarlos.
+- **Pendiente a proposito (fase 2):** cobro real (hoy "Probar Gratis" solo activa, no cobra — necesita que definas una pasarela de pago), conectores propios por tenant (hoy comparten el mismo `ToolRegistry` marcado como publico), proveedor de auth externo (hoy JWT propio).
+
 ## Prueba manual del pipeline completo
 
 ```bash

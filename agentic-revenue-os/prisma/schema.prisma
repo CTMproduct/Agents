@@ -67,6 +67,20 @@ enum AutonomyLevel {
   L3_AUTO_QUOTE_DRAFT
 }
 
+enum UserRole {
+  PLATFORM_ADMIN // tu cuenta: ve todos los tenants
+  TENANT_ADMIN // administra los agentes de su propia empresa
+  TENANT_MEMBER
+}
+
+enum AgentCategory {
+  SDR
+  SALES_FOLLOWUP
+  COLLECTIONS
+  SUPPORT
+  CUSTOM
+}
+
 // ---------- CRM Core ----------
 
 model Account {
@@ -188,9 +202,11 @@ model AgentRun {
   confidenceScore     Float?
   humanReviewRequired Boolean  @default(true) // L0: siempre true
   traceId             String
+  tenantId            String? // null = agente interno de CTM; con valor = agente de un tenant del marketplace
   createdAt           DateTime @default(now())
 
   @@index([agentName, createdAt])
+  @@index([tenantId, createdAt])
 }
 
 model SuggestedReply {
@@ -262,4 +278,79 @@ model AutonomyPolicy {
   level        AutonomyLevel @default(L0_HUMAN_APPROVES_ALL)
   evalErrorPct Float? // último error medido en evals; el gate para subir de nivel
   updatedAt    DateTime      @updatedAt
+}
+
+// ---------- Marketplace multi-tenant (empresas que contratan agentes) ----------
+// Capa aditiva y separada del CRM interno de CTM: cada empresa (Tenant) activa
+// sus propios agentes a partir de un catálogo (AgentTemplate), los edita con
+// su propio archivo de skill en markdown y sus conectores, y los califica.
+
+model Tenant {
+  id        String        @id @default(cuid())
+  name      String
+  slug      String        @unique
+  createdAt DateTime      @default(now())
+  users     User[]
+  agents    TenantAgent[]
+  reviews   AgentReview[]
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  role         UserRole  @default(TENANT_MEMBER)
+  tenant       Tenant?   @relation(fields: [tenantId], references: [id])
+  tenantId     String?
+  createdAt    DateTime  @default(now())
+}
+
+// Catálogo público del marketplace (las tarjetas "Probar Gratis").
+model AgentTemplate {
+  id              String        @id @default(cuid())
+  key             String        @unique // "sdr" | "sales_followup" | "collections"
+  name            String
+  tagline         String
+  category        AgentCategory
+  avatarEmoji     String // marcador visual simple para la mascota ilustrada
+  accentColor     String // hex, define el degradado de la tarjeta
+  features        String[] // bullets mostrados en la tarjeta
+  defaultSkillMd  String // contenido markdown inicial al activar (editable despues)
+  defaultToolKeys String[]
+  active          Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  tenantAgents    TenantAgent[]
+  reviews         AgentReview[]
+}
+
+// Instancia de un agente para UN tenant especifico: su propia copia editable
+// del skill.md y sus conectores. "Crea el Tuyo" = TenantAgent sin templateId.
+model TenantAgent {
+  id         String         @id @default(cuid())
+  tenant     Tenant         @relation(fields: [tenantId], references: [id])
+  tenantId   String
+  template   AgentTemplate? @relation(fields: [templateId], references: [id])
+  templateId String?
+  name       String
+  skillMd    String // el "skill" del agente: system prompt en markdown, editable
+  toolKeys   String[]
+  active     Boolean        @default(true)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@index([tenantId])
+}
+
+// Calificacion de una empresa (tenant) sobre una plantilla del catalogo.
+model AgentReview {
+  id         String        @id @default(cuid())
+  tenant     Tenant        @relation(fields: [tenantId], references: [id])
+  tenantId   String
+  template   AgentTemplate @relation(fields: [templateId], references: [id])
+  templateId String
+  rating     Int // 1..5
+  comment    String?
+  createdAt  DateTime      @default(now())
+
+  @@unique([tenantId, templateId])
 }

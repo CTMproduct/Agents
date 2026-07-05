@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export interface ToolContext {
-  contactId: string;
+  contactId?: string;
   leadId?: string | null;
   traceId: string;
 }
@@ -13,6 +13,8 @@ export interface AgentTool {
   name: string;
   description: string;
   inputSchema: Record<string, unknown>;
+  /** true = seguro para agentes de tenants externos del marketplace (no toca datos internos de CTM). */
+  marketplacePublic: boolean;
   execute(input: Record<string, unknown>, ctx: ToolContext): Promise<unknown>;
 }
 
@@ -21,12 +23,15 @@ export interface ServerTool {
   key: string;
   anthropicType: string;
   anthropicName: string;
+  marketplacePublic: boolean;
 }
 
 /**
  * Registro de conectores. Agregar una API nueva = agregar una entrada aqui
- * (o inyectar un provider externo) y referenciarla por key en AgentDefinition.toolKeys.
- * Ningun agente ni el workflow conocen la lista completa: solo piden sus toolKeys.
+ * (o inyectar un provider externo) y referenciarla por key en AgentDefinition.toolKeys
+ * (agentes internos de CTM) o TenantAgent.toolKeys (agentes del marketplace).
+ * knowledge_search/crm_lookup leen datos internos de CTM: NO son marketplacePublic,
+ * asi un tenant externo nunca puede alcanzar el CRM de otro tenant por error.
  */
 @Injectable()
 export class ToolRegistry {
@@ -36,7 +41,12 @@ export class ToolRegistry {
   constructor(private readonly prisma: PrismaService) {
     this.register(this.buildKnowledgeSearchTool());
     this.register(this.buildCrmLookupTool());
-    this.registerServerTool({ key: 'web_search', anthropicType: 'web_search_20260209', anthropicName: 'web_search' });
+    this.registerServerTool({
+      key: 'web_search',
+      anthropicType: 'web_search_20260209',
+      anthropicName: 'web_search',
+      marketplacePublic: true,
+    });
   }
 
   register(tool: AgentTool) {
@@ -55,6 +65,23 @@ export class ToolRegistry {
     return keys.map((k) => this.serverTools.get(k)).filter((t): t is ServerTool => !!t);
   }
 
+  /** Conectores que un tenant del marketplace puede habilitar en su propio agente. */
+  listMarketplacePublic(): Array<{ key: string; name: string; description: string }> {
+    const client = [...this.clientTools.values()]
+      .filter((t) => t.marketplacePublic)
+      .map((t) => ({ key: t.key, name: t.name, description: t.description }));
+    const server = [...this.serverTools.values()]
+      .filter((t) => t.marketplacePublic)
+      .map((t) => ({ key: t.key, name: t.anthropicName, description: 'Herramienta de servidor (Anthropic).' }));
+    return [...client, ...server];
+  }
+
+  /** Filtra una lista de toolKeys dejando solo los seguros para tenants externos. */
+  filterMarketplacePublic(keys: string[]): string[] {
+    const publicKeys = new Set(this.listMarketplacePublic().map((t) => t.key));
+    return keys.filter((k) => publicKeys.has(k));
+  }
+
   /** Consulta tarifarios/documentos VIGENTES. El gate "sin documento vigente no se cotiza" vive aqui. */
   private buildKnowledgeSearchTool(): AgentTool {
     return {
@@ -70,6 +97,7 @@ export class ToolRegistry {
         },
         required: ['market'],
       },
+      marketplacePublic: false,
       execute: async (input) => {
         const market = String(input.market ?? '');
         const now = new Date();
@@ -89,14 +117,16 @@ export class ToolRegistry {
     };
   }
 
-  /** Historial del contacto en el propio CRM: leads previos, tareas abiertas. */
+  /** Historial del contacto en el propio CRM de CTM: leads previos, tareas abiertas. */
   private buildCrmLookupTool(): AgentTool {
     return {
       key: 'crm_lookup',
       name: 'crm_lookup',
       description: 'Consulta el historial de leads y tareas abiertas del contacto actual en el CRM.',
       inputSchema: { type: 'object', properties: {} },
+      marketplacePublic: false,
       execute: async (_input, ctx) => {
+        if (!ctx.contactId) return { leads: [] };
         const leads = await this.prisma.lead.findMany({
           where: { contactId: ctx.contactId },
           orderBy: { updatedAt: 'desc' },

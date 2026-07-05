@@ -1,0 +1,36 @@
+import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { UserRole } from '@prisma/client';
+import { AuthService, JwtPayload } from './auth.service';
+
+export const ROLES_KEY = 'roles';
+/** Decorador opcional: @Roles(UserRole.PLATFORM_ADMIN) restringe el endpoint. */
+export const Roles = (...roles: UserRole[]) => Reflect.metadata(ROLES_KEY, roles);
+
+/** Exige un Bearer token valido. Adjunta req.user = JwtPayload. */
+@Injectable()
+export class AuthGuard implements CanActivate {
+  constructor(
+    private readonly auth: AuthService,
+    private readonly reflector: Reflector,
+  ) {}
+
+  canActivate(context: ExecutionContext): boolean {
+    const req = context.switchToHttp().getRequest();
+    const header: string | undefined = req.headers['authorization'];
+    if (!header?.startsWith('Bearer ')) {
+      throw new UnauthorizedException('Falta el header Authorization: Bearer <token>');
+    }
+    const payload: JwtPayload = this.auth.verify(header.slice('Bearer '.length));
+    req.user = payload;
+
+    const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(ROLES_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (requiredRoles?.length && !requiredRoles.includes(payload.role)) {
+      throw new UnauthorizedException('No tienes permiso para este recurso');
+    }
+    return true;
+  }
+}

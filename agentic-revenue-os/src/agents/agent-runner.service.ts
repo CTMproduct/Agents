@@ -18,12 +18,23 @@ export interface AgentRunnerResult {
   toolCalls: number;
 }
 
+interface ExecuteAgenticParams {
+  agentName: string;
+  systemPrompt: string;
+  toolKeys: string[];
+  conversationText: string;
+  ctx: ToolContext;
+  tenantId?: string | null;
+  auditPayload: Record<string, unknown>;
+}
+
 /**
- * Ejecutor generico: cualquier AgentDefinition (ventas, soporte, cierre, el que
- * se agregue despues) corre por aqui. No hay routing hardcodeado a un agente:
- * el llamador pasa la key, este servicio resuelve prompt + herramientas desde
- * la base de datos y el ToolRegistry, y audita la corrida bajo su propio nombre
- * para que el dashboard de costos la muestre como agente independiente.
+ * Ejecutor generico: cualquier agente (AgentDefinition interno de CTM o
+ * TenantAgent de una empresa del marketplace) corre por el mismo motor.
+ * No hay routing hardcodeado a un agente: el llamador pasa la config,
+ * este servicio resuelve herramientas desde el ToolRegistry y audita la
+ * corrida bajo el nombre propio del agente para que el dashboard de
+ * costos la muestre como entidad independiente.
  */
 @Injectable()
 export class AgentRunnerService {
@@ -36,27 +47,60 @@ export class AgentRunnerService {
     private readonly audit: AuditService,
   ) {}
 
+  /** Agente interno de CTM (ventas/soporte/cierre), definido en AgentDefinition. */
   async run(definitionKey: string, input: AgentRunnerInput): Promise<AgentRunnerResult | null> {
     const definition = await this.prisma.agentDefinition.findUnique({ where: { key: definitionKey } });
     if (!definition || !definition.active) {
       this.logger.warn(`AgentDefinition '${definitionKey}' no existe o esta inactiva`);
       return null;
     }
+    return this.executeAgentic({
+      agentName: definition.name,
+      systemPrompt: definition.systemPrompt,
+      toolKeys: definition.toolKeys,
+      conversationText: input.conversationText,
+      ctx: { contactId: input.contactId, leadId: input.leadId, traceId: input.traceId },
+      auditPayload: { definitionKey },
+    });
+  }
 
-    const clientTools = this.tools.resolveClientTools(definition.toolKeys);
-    const serverTools = this.tools.resolveServerTools(definition.toolKeys);
-    const ctx: ToolContext = { contactId: input.contactId, leadId: input.leadId, traceId: input.traceId };
+  /** Agente de un tenant del marketplace (TenantAgent). Solo usa conectores marketplacePublic. */
+  async runTenantAgent(
+    tenantAgentId: string,
+    tenantId: string,
+    input: { conversationText: string; traceId: string },
+  ): Promise<AgentRunnerResult | null> {
+    const agent = await this.prisma.tenantAgent.findFirst({ where: { id: tenantAgentId, tenantId } });
+    if (!agent || !agent.active) {
+      this.logger.warn(`TenantAgent '${tenantAgentId}' no existe, no es de este tenant, o esta inactivo`);
+      return null;
+    }
+    const safeToolKeys = this.tools.filterMarketplacePublic(agent.toolKeys);
+    return this.executeAgentic({
+      agentName: `[${tenantId.slice(0, 8)}] ${agent.name}`,
+      systemPrompt: agent.skillMd,
+      toolKeys: safeToolKeys,
+      conversationText: input.conversationText,
+      ctx: { traceId: input.traceId },
+      tenantId,
+      auditPayload: { tenantAgentId },
+    });
+  }
+
+  private async executeAgentic(p: ExecuteAgenticParams): Promise<AgentRunnerResult> {
+    const clientTools = this.tools.resolveClientTools(p.toolKeys);
+    const serverTools = this.tools.resolveServerTools(p.toolKeys);
 
     const resp = await this.llm.runAgentic({
-      system: definition.systemPrompt,
-      user: `Conversacion (el ultimo mensaje es el mas reciente):\n\n${input.conversationText}`,
+      system: p.systemPrompt,
+      user: `Conversacion (el ultimo mensaje es el mas reciente):\n\n${p.conversationText}`,
       tools: clientTools.map((t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema })),
       serverTools: serverTools.map((t) => ({ anthropicType: t.anthropicType, anthropicName: t.anthropicName })),
       executeTool: async (name, toolInput) => {
         const tool = clientTools.find((t) => t.name === name);
         if (!tool) return { error: `Herramienta desconocida: ${name}` };
         try {
-          return await tool.execute(toolInput, ctx);
+          return await tool.execute(toolInput, p.ctx);
         } catch (e) {
           return { error: (e as Error).message };
         }
@@ -65,30 +109,31 @@ export class AgentRunnerService {
 
     const run = await this.prisma.agentRun.create({
       data: {
-        agentName: definition.name,
+        agentName: p.agentName,
         modelProvider: this.llm.providerName,
         modelName: resp.modelName,
-        inputSummary: input.conversationText.slice(0, 500),
+        inputSummary: p.conversationText.slice(0, 500),
         outputJson: { text: resp.text, toolCalls: resp.toolCalls } as unknown as Prisma.InputJsonValue,
         latencyMs: resp.latencyMs,
         inputTokens: resp.inputTokens,
         outputTokens: resp.outputTokens,
         confidenceScore: null,
         humanReviewRequired: true,
-        traceId: input.traceId,
+        traceId: p.ctx.traceId,
+        tenantId: p.tenantId ?? null,
       },
     });
 
     await this.audit.log({
       eventType: 'agent.run.completed',
-      actor: `agent:${definition.name}`,
+      actor: `agent:${p.agentName}`,
       entity: 'AgentRun',
       entityId: run.id,
-      payload: { definitionKey, toolCalls: resp.toolCalls.map((c) => c.name) },
-      traceId: input.traceId,
+      payload: { ...p.auditPayload, toolCalls: resp.toolCalls.map((c) => c.name) },
+      traceId: p.ctx.traceId,
     });
 
-    this.logger.log(`run=${run.id} agent=${definition.name} tools=${resp.toolCalls.length}`);
+    this.logger.log(`run=${run.id} agent=${p.agentName} tools=${resp.toolCalls.length}`);
     return { agentRunId: run.id, text: resp.text, toolCalls: resp.toolCalls.length };
   }
 }

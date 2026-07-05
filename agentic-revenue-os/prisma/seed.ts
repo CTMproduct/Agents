@@ -1,8 +1,10 @@
 /* eslint-disable no-console */
-import { PrismaClient, AutonomyLevel } from '@prisma/client';
+import { PrismaClient, AutonomyLevel, AgentCategory, UserRole } from '@prisma/client';
+import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+// Agentes internos de CTM (CRM propio) -- ver AgentDefinition.
 const AGENT_DEFINITIONS = [
   {
     key: 'sales',
@@ -44,6 +46,56 @@ const AGENT_DEFINITIONS = [
   },
 ];
 
+// Catalogo del marketplace (las tarjetas que ve cualquier empresa que llegue a la plataforma).
+const AGENT_TEMPLATES = [
+  {
+    key: 'sdr',
+    name: 'Calificador de Leads AI (SDR)',
+    tagline: 'Califica leads al instante, actualiza el CRM y agenda reuniones.',
+    category: AgentCategory.SDR,
+    avatarEmoji: '👩‍💼',
+    accentColor: '#c4d94a',
+    features: ['Califica leads al instante', 'Actualiza el CRM', 'Agenda reuniones'],
+    defaultSkillMd:
+      '# Rol\nEres un SDR (Sales Development Rep) que califica leads entrantes para esta empresa.\n\n' +
+      '# Instrucciones\n- Identifica intencion, presupuesto aproximado y urgencia del lead.\n' +
+      '- Redacta una respuesta breve, calida, en el idioma del cliente.\n' +
+      '- Nunca inventes precios ni confirmes disponibilidad: eso lo valida un humano.\n' +
+      '- Si el lead esta listo para agendar, propone continuar con un asesor humano.',
+    defaultToolKeys: ['web_search'],
+  },
+  {
+    key: 'sales_followup',
+    name: 'Seguimiento de Ventas AI',
+    tagline: 'Hace seguimientos, reactiva leads fríos y actualiza el CRM.',
+    category: AgentCategory.SALES_FOLLOWUP,
+    avatarEmoji: '🕴️',
+    accentColor: '#8fb84a',
+    features: ['Hace seguimientos', 'Reactiva leads', 'Actualiza el CRM'],
+    defaultSkillMd:
+      '# Rol\nEres el agente de seguimiento de ventas de esta empresa.\n\n' +
+      '# Instrucciones\n- Retoma la conversacion con un lead que no ha respondido.\n' +
+      '- Se breve y directo, sin sonar insistente.\n' +
+      '- Nunca prometas descuentos ni cifras sin autorizacion humana.',
+    defaultToolKeys: ['web_search'],
+  },
+  {
+    key: 'collections',
+    name: 'Especialista de Cobranzas AI',
+    tagline: 'Recupera pagos, envía recordatorios y hace seguimiento de saldos.',
+    category: AgentCategory.COLLECTIONS,
+    avatarEmoji: '🤵',
+    accentColor: '#3fae4a',
+    features: ['Recupera pagos', 'Envía recordatorios', 'Llama por saldos'],
+    defaultSkillMd:
+      '# Rol\nEres el agente de cobranzas de esta empresa.\n\n' +
+      '# Instrucciones\n- Redacta recordatorios de pago cordiales pero firmes.\n' +
+      '- Nunca amenaces, ni confirmes montos exactos, ni ofrezcas condonaciones: eso lo decide un humano.\n' +
+      '- Si el cliente disputa el cobro, escala a un humano de inmediato.',
+    defaultToolKeys: [],
+  },
+];
+
 async function main() {
   // Politica de autonomia inicial: TODO en L0 (humano aprueba el 100%).
   for (const taskCategory of ['informational_reply', 'followup', 'quote_draft']) {
@@ -54,8 +106,8 @@ async function main() {
     });
   }
 
-  // Agentes especializados: plataforma no monolitica -- cada fila es un agente
-  // independiente, medible por separado en el dashboard de costos.
+  // Agentes especializados internos de CTM: plataforma no monolitica -- cada
+  // fila es un agente independiente, medible por separado en el dashboard de costos.
   for (const def of AGENT_DEFINITIONS) {
     await prisma.agentDefinition.upsert({
       where: { key: def.key },
@@ -64,7 +116,41 @@ async function main() {
     });
   }
 
-  console.log('Seed OK: politicas de autonomia en L0 + 3 agentes especializados (ventas/soporte/cierre).');
+  // Catalogo del marketplace multi-tenant.
+  for (const t of AGENT_TEMPLATES) {
+    await prisma.agentTemplate.upsert({
+      where: { key: t.key },
+      update: {
+        name: t.name,
+        tagline: t.tagline,
+        category: t.category,
+        avatarEmoji: t.avatarEmoji,
+        accentColor: t.accentColor,
+        features: t.features,
+        defaultSkillMd: t.defaultSkillMd,
+        defaultToolKeys: t.defaultToolKeys,
+      },
+      create: t,
+    });
+  }
+
+  // Admin de plataforma (tu cuenta): solo se crea si se dan las dos env vars,
+  // nunca con una contrasena por defecto adivinable.
+  const adminEmail = process.env.PLATFORM_ADMIN_EMAIL;
+  const adminPassword = process.env.PLATFORM_ADMIN_PASSWORD;
+  if (adminEmail && adminPassword) {
+    const passwordHash = await bcrypt.hash(adminPassword, 10);
+    await prisma.user.upsert({
+      where: { email: adminEmail },
+      update: { passwordHash, role: UserRole.PLATFORM_ADMIN },
+      create: { email: adminEmail, passwordHash, role: UserRole.PLATFORM_ADMIN },
+    });
+    console.log(`Admin de plataforma listo: ${adminEmail}`);
+  } else {
+    console.log('PLATFORM_ADMIN_EMAIL/PLATFORM_ADMIN_PASSWORD no definidos: sin admin de plataforma creado.');
+  }
+
+  console.log('Seed OK: autonomia L0 + 3 agentes internos + 3 plantillas de marketplace.');
 }
 
 main()

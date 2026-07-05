@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Marketplace de Agentes IA — CTM</title>
+<style>
+  :root{
+    --bg:#07090a;--panel:#0f1512;--ink:#eef3ee;--muted:#8ea08f;--lime:#c7e04e;--lime2:#9fc23c;
+    --olive-hi:#2a3a1a;--olive-lo:#12160e;--purple:#1a1230;--accent:#c7e04e;--danger:#ff6b6b;
+    --card-radius:22px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;font-family:'Segoe UI',system-ui,sans-serif;color:var(--ink);
+    background:
+      radial-gradient(900px 500px at 15% -10%,rgba(199,224,78,.08),transparent 60%),
+      radial-gradient(1000px 600px at 100% 10%,rgba(120,60,200,.10),transparent 60%),
+      var(--bg);}
+  ::-webkit-scrollbar{width:9px}::-webkit-scrollbar-thumb{background:#22301a;border-radius:9px}
+  a{color:var(--lime)}
+  header{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:22px;padding:16px 30px;
+    background:rgba(7,9,10,.82);backdrop-filter:blur(10px);border-bottom:1px solid rgba(199,224,78,.12)}
+  .logo{font-weight:800;letter-spacing:.5px;font-size:1.05rem}
+  .logo span{color:var(--lime)}
+  nav{display:flex;gap:4px}
+  nav button{background:none;border:0;color:var(--muted);font-weight:600;padding:9px 14px;border-radius:10px;cursor:pointer;font-size:.86rem}
+  nav button.active{background:rgba(199,224,78,.12);color:var(--lime)}
+  .right{margin-left:auto;display:flex;gap:10px;align-items:center;font-size:.85rem}
+  .btn{border:0;border-radius:11px;padding:10px 20px;font-weight:800;cursor:pointer;background:var(--lime);color:#101a08;font-size:.86rem;letter-spacing:.2px}
+  .btn:hover{background:var(--lime2)}
+  .btn.ghost{background:transparent;border:1px solid rgba(199,224,78,.4);color:var(--lime)}
+  .btn.small{padding:7px 14px;font-size:.78rem}
+  .btn.danger{background:var(--danger);color:#2a0505}
+  main{max-width:1240px;margin:0 auto;padding:40px 30px 90px}
+  .hidden{display:none!important}
+  h1.hero{font-size:2.1rem;margin:6px 0 8px;font-weight:800}
+  h1.hero span{color:var(--lime)}
+  p.sub{color:var(--muted);font-size:1rem;margin:0 0 34px;max-width:640px}
+  /* Marketplace grid + 3D cards */
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:26px;perspective:1400px}
+  .card3d{border-radius:var(--card-radius);padding:26px 22px 24px;text-align:center;position:relative;
+    background:linear-gradient(160deg,var(--olive-hi) 0%,var(--purple) 65%,#0a0712 100%);
+    border:1px solid rgba(199,224,78,.18);transform-style:preserve-3d;transition:transform .12s ease,box-shadow .2s ease;
+    box-shadow:0 18px 40px -18px rgba(0,0,0,.7);cursor:pointer}
+  .card3d:hover{box-shadow:0 26px 60px -16px rgba(199,224,78,.25),0 10px 30px -8px rgba(0,0,0,.6)}
+  .card3d .avatar{font-size:4.2rem;margin:6px 0 18px;filter:drop-shadow(0 10px 18px rgba(0,0,0,.5));transform:translateZ(40px)}
+  .card3d h3{color:var(--lime);font-size:1.05rem;margin:0 0 4px;transform:translateZ(30px)}
+  .card3d .stars{font-size:.8rem;color:#f5c95d;margin-bottom:14px;transform:translateZ(30px)}
+  .card3d .stars .cnt{color:var(--muted);margin-left:4px}
+  .card3d ul{list-style:none;padding:0;margin:0 0 22px;text-align:left;transform:translateZ(20px)}
+  .card3d li{display:flex;gap:9px;align-items:flex-start;font-size:.84rem;color:#d7e3d2;margin-bottom:9px;line-height:1.3}
+  .card3d li::before{content:'✔';color:#8fd0ff;flex-shrink:0;font-size:.78rem;margin-top:1px}
+  .card3d .cta{transform:translateZ(35px)}
+  .card3d.custom{background:linear-gradient(160deg,#1b2410 0%,#161022 70%,#0a0712 100%);border-style:dashed}
+  .card3d.custom p{color:#c9d6c3;font-size:.86rem;margin:0 0 22px;transform:translateZ(20px)}
+  /* Modal */
+  .overlay{position:fixed;inset:0;background:rgba(4,6,4,.72);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:50}
+  .modal{background:var(--panel);border:1px solid rgba(199,224,78,.2);border-radius:18px;padding:28px;width:100%;max-width:440px;max-height:86vh;overflow:auto}
+  .modal.wide{max-width:720px}
+  .modal h2{margin:0 0 18px;font-size:1.15rem}
+  .modal label{display:block;font-size:.78rem;color:var(--muted);margin:14px 0 6px;font-weight:600}
+  .modal input,.modal textarea,.modal select{width:100%;padding:11px 13px;border-radius:10px;border:1px solid rgba(148,163,184,.2);
+    background:#0a0e0b;color:var(--ink);font:inherit;font-size:.88rem}
+  .modal textarea{min-height:160px;font-family:'Cascadia Code',Consolas,monospace;font-size:.82rem;line-height:1.5}
+  .modal .tabs{display:flex;gap:6px;margin-bottom:18px}
+  .modal .tabs button{flex:1;padding:9px;border-radius:9px;border:1px solid rgba(148,163,184,.15);background:transparent;color:var(--muted);cursor:pointer;font-weight:700;font-size:.82rem}
+  .modal .tabs button.active{background:var(--lime);color:#101a08;border-color:var(--lime)}
+  .modal .err{color:var(--danger);font-size:.8rem;margin-top:10px;min-height:1.2em}
+  .modal .foot{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+  .modal .close{position:absolute;top:16px;right:18px;background:none;border:0;color:var(--muted);font-size:1.3rem;cursor:pointer}
+  .modal{position:relative}
+  .tool-check{display:flex;align-items:center;gap:8px;font-size:.82rem;padding:6px 0}
+  .stars-input{font-size:1.6rem;letter-spacing:4px;cursor:pointer;color:#3a3a3a;margin:6px 0}
+  .stars-input span.on{color:#f5c95d}
+  /* Dashboard */
+  .agent-card{background:var(--panel);border:1px solid rgba(199,224,78,.14);border-radius:16px;padding:20px;margin-bottom:18px}
+  .agent-card .hd{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .agent-card .hd h3{margin:0;font-size:1rem;color:var(--lime)}
+  .agent-card .hd .badge{font-size:.68rem;padding:2px 9px;border-radius:8px;background:rgba(199,224,78,.12);color:var(--lime);font-weight:700}
+  .agent-card .hd .badge.off{background:rgba(148,163,184,.14);color:var(--muted)}
+  .agent-card textarea{width:100%;min-height:150px;font-family:Consolas,monospace;font-size:.8rem;line-height:1.5;
+    background:#0a0e0b;color:var(--ink);border:1px solid rgba(148,163,184,.18);border-radius:10px;padding:12px}
+  .tool-grid{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}
+  .tool-pill{border:1px solid rgba(148,163,184,.2);border-radius:20px;padding:6px 14px;font-size:.78rem;cursor:pointer;color:var(--muted)}
+  .tool-pill.on{background:rgba(199,224,78,.15);border-color:var(--lime);color:var(--lime)}
+  .row-actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+  .test-box{margin-top:16px;background:#0a0e0b;border:1px solid rgba(148,163,184,.14);border-radius:12px;padding:14px}
+  .test-box textarea{min-height:70px}
+  .test-out{margin-top:10px;padding:12px;border-radius:10px;background:rgba(199,224,78,.06);border:1px solid rgba(199,224,78,.16);font-size:.85rem;white-space:pre-wrap}
+  table{width:100%;border-collapse:collapse;font-size:.83rem}
+  th{text-align:left;color:var(--muted);font-size:.68rem;text-transform:uppercase;padding:9px 10px;border-bottom:1px solid rgba(199,224,78,.14)}
+  td{padding:10px;border-bottom:1px solid rgba(148,163,184,.06)}
+  .empty{color:var(--muted);text-align:center;padding:60px 0}
+  h2.sec{font-size:.82rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin:26px 0 14px;font-weight:700}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">CTM <span>Agentic Marketplace</span></div>
+  <nav>
+    <button id="nav-catalog" class="active" onclick="showView('catalog')">Catálogo</button>
+    <button id="nav-dashboard" onclick="showView('dashboard')">Mis Agentes</button>
+    <button id="nav-admin" class="hidden" onclick="showView('admin')">Admin</button>
+  </nav>
+  <div class="right" id="authArea"></div>
+</header>
+<main>
+  <section id="view-catalog">
+    <h1 class="hero">Contrata agentes de <span>IA</span> que sí cumplen</h1>
+    <p class="sub">Cada agente tiene calificaciones reales de otras empresas que ya lo usan. Actívalo gratis, ajusta su skill y sus conectores en minutos, sin escribir código.</p>
+    <div class="grid" id="catalogGrid"></div>
+  </section>
+
+  <section id="view-dashboard" class="hidden">
+    <h1 class="hero">Mis <span>Agentes</span></h1>
+    <p class="sub">Edita el archivo de habilidad (skill.md) y los conectores de cada agente que activaste. Los cambios se aplican en su próxima ejecución.</p>
+    <div id="myAgentsList"></div>
+  </section>
+
+  <section id="view-admin" class="hidden">
+    <h1 class="hero">Panel de <span>Administración</span></h1>
+    <p class="sub">Visibilidad global: todas las empresas (tenants) y sus agentes activados.</p>
+    <h2 class="sec">Empresas</h2>
+    <div class="agent-card"><table id="tenantsTable"></table></div>
+    <h2 class="sec">Consumo por empresa</h2>
+    <div class="agent-card"><table id="usageTable"></table></div>
+    <h2 class="sec">Todos los agentes activados</h2>
+    <div class="agent-card"><table id="allAgentsTable"></table></div>
+  </section>
+</main>
+
+<script>
+const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const $=sel=>document.querySelector(sel);
+let TOKEN=localStorage.getItem('mk_token')||null;
+let ME=null;
+let TOOLS=[];
+
+async function api(path, opts={}){
+  const headers={'content-type':'application/json', ...(opts.headers||{})};
+  if(TOKEN) headers['Authorization']='Bearer '+TOKEN;
+  const res=await fetch(path,{...opts,headers});
+  if(res.status===401){ logout(); throw new Error('Sesion expirada, vuelve a iniciar sesion.'); }
+  if(!res.ok){ const t=await res.text(); throw new Error(t||('HTTP '+res.status)); }
+  return res.status===204?null:res.json();
+}
+
+function showView(name){
+  ['catalog','dashboard','admin'].forEach(v=>{
+    document.getElementById('view-'+v).classList.toggle('hidden', v!==name);
+    document.getElementById('nav-'+v).classList.toggle('active', v===name);
+  });
+  if(name==='dashboard') loadMyAgents();
+  if(name==='admin') loadAdmin();
+}
+
+function renderAuthArea(){
+  const area=$('#authArea');
+  if(!TOKEN||!ME){
+    area.innerHTML=`<button class="btn ghost small" onclick="openAuthModal('login')">Iniciar sesión</button>
+      <button class="btn small" onclick="openAuthModal('register')">Registrar mi empresa</button>`;
+    document.getElementById('nav-admin').classList.add('hidden');
+    return;
+  }
+  area.innerHTML=`<span style="color:#c9d6c3">${esc(ME.tenant?.name||ME.email)}</span>
+    <button class="btn ghost small" onclick="logout()">Salir</button>`;
+  document.getElementById('nav-admin').classList.toggle('hidden', ME.role!=='PLATFORM_ADMIN');
+}
+
+function logout(){ TOKEN=null; ME=null; localStorage.removeItem('mk_token'); renderAuthArea(); showView('catalog'); }
+
+async function refreshMe(){
+  if(!TOKEN) return;
+  try{ ME=await api('/auth/me'); } catch { ME=null; TOKEN=null; localStorage.removeItem('mk_token'); }
+  renderAuthArea();
+}
+
+// ---------- Catálogo ----------
+async function loadCatalog(){
+  const templates=await api('/marketplace/templates');
+  const grid=$('#catalogGrid');
+  grid.innerHTML=templates.map(t=>{
+    const stars='★'.repeat(Math.round(t.ratingAvg||0))+'☆'.repeat(5-Math.round(t.ratingAvg||0));
+    return `<div class="card3d" data-key="${esc(t.key)}" style="--tint:${esc(t.accentColor)}">
+      <div class="avatar">${t.avatarEmoji}</div>
+      <h3>${esc(t.name)}</h3>
+      <div class="stars">${stars}${t.ratingCount?`<span class="cnt">(${t.ratingCount})</span>`:'<span class="cnt">Sin calificar aún</span>'}</div>
+      <ul>${t.features.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>
+      <button class="btn cta" onclick="tryTemplate('${esc(t.key)}')">Probar Gratis</button>
+    </div>`;
+  }).join('') + `
+    <div class="card3d custom">
+      <div class="avatar">🤖</div>
+      <h3>Crea el Tuyo</h3>
+      <p>Crea un agente de IA personalizado en minutos, sin usar código.</p>
+      <button class="btn cta ghost" onclick="openCustomModal()">Probar Gratis</button>
+    </div>`;
+  attachTilt();
+}
+
+function attachTilt(){
+  document.querySelectorAll('.card3d').forEach(card=>{
+    card.addEventListener('mousemove', e=>{
+      const r=card.getBoundingClientRect();
+      const x=(e.clientX-r.left)/r.width-0.5, y=(e.clientY-r.top)/r.height-0.5;
+      card.style.transform=`perspective(1000px) rotateY(${x*10}deg) rotateX(${-y*10}deg) translateY(-4px)`;
+    });
+    card.addEventListener('mouseleave', ()=>{ card.style.transform=''; });
+  });
+}
+
+async function tryTemplate(key){
+  if(!TOKEN){ openAuthModal('register', ()=>tryTemplate(key)); return; }
+  try{
+    await api('/marketplace/templates/'+key+'/activate', {method:'POST'});
+    showView('dashboard');
+  }catch(e){ alert('No se pudo activar: '+e.message); }
+}
+
+// ---------- Auth modal ----------
+function openAuthModal(tab, onSuccess){
+  const wrap=document.createElement('div');
+  wrap.className='overlay';
+  wrap.innerHTML=`<div class="modal">
+    <button class="close" onclick="this.closest('.overlay').remove()">✕</button>
+    <div class="tabs">
+      <button id="tab-login" onclick="switchAuthTab('login')">Iniciar sesión</button>
+      <button id="tab-register" onclick="switchAuthTab('register')">Registrar empresa</button>
+    </div>
+    <div id="authFormArea"></div>
+    <div class="err" id="authErr"></div>
+  </div>`;
+  document.body.appendChild(wrap);
+  wrap._onSuccess=onSuccess;
+  switchAuthTab(tab||'login');
+}
+function switchAuthTab(tab){
+  document.getElementById('tab-login').classList.toggle('active', tab==='login');
+  document.getElementById('tab-register').classList.toggle('active', tab==='register');
+  const area=document.getElementById('authFormArea');
+  if(tab==='login'){
+    area.innerHTML=`<label>Email</label><input id="loginEmail" type="email"/>
+      <label>Contraseña</label><input id="loginPass" type="password"/>
+      <div class="foot"><button class="btn" onclick="doLogin()">Entrar</button></div>`;
+  } else {
+    area.innerHTML=`<label>Nombre de tu empresa</label><input id="regTenant" placeholder="Mi Empresa S.A.S"/>
+      <label>Email</label><input id="regEmail" type="email"/>
+      <label>Contraseña (min. 8 caracteres)</label><input id="regPass" type="password"/>
+      <div class="foot"><button class="btn" onclick="doRegister()">Crear cuenta</button></div>`;
+  }
+}
+async function doLogin(){
+  const email=document.getElementById('loginEmail').value.trim();
+  const password=document.getElementById('loginPass').value;
+  try{
+    const r=await api('/auth/login',{method:'POST',body:JSON.stringify({email,password})});
+    TOKEN=r.token; localStorage.setItem('mk_token',TOKEN);
+    await refreshMe();
+    const overlay=document.querySelector('.overlay'); const cb=overlay?._onSuccess; overlay?.remove();
+    loadCatalog(); if(cb) cb();
+  }catch(e){ document.getElementById('authErr').textContent=e.message; }
+}
+async function doRegister(){
+  const tenantName=document.getElementById('regTenant').value.trim();
+  const email=document.getElementById('regEmail').value.trim();
+  const password=document.getElementById('regPass').value;
+  try{
+    const r=await api('/auth/register',{method:'POST',body:JSON.stringify({email,password,tenantName})});
+    TOKEN=r.token; localStorage.setItem('mk_token',TOKEN);
+    await refreshMe();
+    const overlay=document.querySelector('.overlay'); const cb=overlay?._onSuccess; overlay?.remove();
+    loadCatalog(); if(cb) cb();
+  }catch(e){ document.getElementById('authErr').textContent=e.message; }
+}
+
+// ---------- Crea el Tuyo ----------
+async function openCustomModal(){
+  if(!TOKEN){ openAuthModal('register', openCustomModal); return; }
+  if(!TOOLS.length) TOOLS=await api('/marketplace/tools');
+  const wrap=document.createElement('div');
+  wrap.className='overlay';
+  wrap.innerHTML=`<div class="modal wide">
+    <button class="close" onclick="this.closest('.overlay').remove()">✕</button>
+    <h2>Crea tu agente personalizado</h2>
+    <label>Nombre del agente</label><input id="customName" placeholder="Ej. Asistente de Reservas"/>
+    <label>Skill (instrucciones en markdown)</label>
+    <textarea id="customSkill" placeholder="# Rol&#10;Eres...&#10;&#10;# Instrucciones&#10;- ...">${'# Rol\nEres el agente de ... de mi empresa.\n\n# Instrucciones\n- '}</textarea>
+    <label>Conectores</label>
+    <div>${TOOLS.map(t=>`<label class="tool-check"><input type="checkbox" value="${esc(t.key)}"/> ${esc(t.name)} — <span style="color:var(--muted)">${esc(t.description)}</span></label>`).join('')||'<span style="color:var(--muted)">Sin conectores públicos disponibles.</span>'}</div>
+    <div class="err" id="customErr"></div>
+    <div class="foot"><button class="btn" onclick="doCreateCustom()">Crear agente</button></div>
+  </div>`;
+  document.body.appendChild(wrap);
+}
+async function doCreateCustom(){
+  const name=document.getElementById('customName').value.trim();
+  const skillMd=document.getElementById('customSkill').value.trim();
+  const toolKeys=[...document.querySelectorAll('.overlay input[type=checkbox]:checked')].map(c=>c.value);
+  try{
+    await api('/marketplace/my-agents',{method:'POST',body:JSON.stringify({name,skillMd,toolKeys})});
+    document.querySelector('.overlay')?.remove();
+    showView('dashboard');
+  }catch(e){ document.getElementById('customErr').textContent=e.message; }
+}
+
+// ---------- Mis Agentes ----------
+async function loadMyAgents(){
+  const list=document.getElementById('myAgentsList');
+  if(!TOKEN){ list.innerHTML='<p class="empty">Inicia sesión para ver tus agentes.</p>'; return; }
+  if(!TOOLS.length) TOOLS=await api('/marketplace/tools');
+  const agents=await api('/marketplace/my-agents');
+  if(!agents.length){ list.innerHTML='<p class="empty">Aún no has activado ningún agente. Ve al Catálogo y prueba uno gratis.</p>'; return; }
+  list.innerHTML=agents.map(a=>`
+    <div class="agent-card" id="agent-${a.id}">
+      <div class="hd">
+        <h3>${esc(a.name)}</h3>
+        <span class="badge ${a.active?'':'off'}">${a.active?'Activo':'Inactivo'}</span>
+        ${a.template?`<span class="badge">plantilla: ${esc(a.template.name)}</span>`:'<span class="badge">personalizado</span>'}
+      </div>
+      <label style="font-size:.75rem;color:var(--muted)">Skill (markdown)</label>
+      <textarea id="skill-${a.id}">${esc(a.skillMd)}</textarea>
+      <label style="font-size:.75rem;color:var(--muted);display:block;margin-top:10px">Conectores</label>
+      <div class="tool-grid" id="tools-${a.id}">
+        ${TOOLS.map(t=>`<span class="tool-pill ${a.toolKeys.includes(t.key)?'on':''}" data-key="${esc(t.key)}" onclick="this.classList.toggle('on')">${esc(t.name)}</span>`).join('')||'<span style="color:var(--muted);font-size:.8rem">Sin conectores públicos disponibles.</span>'}
+      </div>
+      <div class="row-actions">
+        <button class="btn small" onclick="saveAgent('${a.id}')">Guardar cambios</button>
+        <button class="btn ghost small" onclick="toggleActive('${a.id}', ${!a.active})">${a.active?'Desactivar':'Activar'}</button>
+        ${a.template?`<button class="btn ghost small" onclick="openReview('${a.template.key}')">Calificar plantilla</button>`:''}
+      </div>
+      <div class="test-box">
+        <label style="font-size:.75rem;color:var(--muted)">Probar con un mensaje de ejemplo</label>
+        <textarea id="test-${a.id}" placeholder="Ej: Hola, quiero saber mas de sus servicios"></textarea>
+        <div class="row-actions"><button class="btn small" onclick="testAgent('${a.id}')">Ejecutar prueba</button></div>
+        <div class="test-out hidden" id="out-${a.id}"></div>
+      </div>
+    </div>`).join('');
+}
+
+async function saveAgent(id){
+  const skillMd=document.getElementById('skill-'+id).value;
+  const toolKeys=[...document.querySelectorAll('#tools-'+id+' .tool-pill.on')].map(p=>p.dataset.key);
+  try{
+    await api('/marketplace/my-agents/'+id, {method:'PATCH', body:JSON.stringify({skillMd, toolKeys})});
+    alert('Guardado.');
+  }catch(e){ alert('Error: '+e.message); }
+}
+async function toggleActive(id, active){
+  try{ await api('/marketplace/my-agents/'+id,{method:'PATCH',body:JSON.stringify({active})}); loadMyAgents(); }
+  catch(e){ alert('Error: '+e.message); }
+}
+async function testAgent(id){
+  const conversationText=document.getElementById('test-'+id).value.trim();
+  if(!conversationText) return;
+  const out=document.getElementById('out-'+id);
+  out.classList.remove('hidden'); out.textContent='Ejecutando...';
+  try{
+    const r=await api('/marketplace/my-agents/'+id+'/run',{method:'POST',body:JSON.stringify({conversationText})});
+    out.textContent=r.text||'(el agente no genero texto)';
+  }catch(e){ out.textContent='Error: '+e.message; }
+}
+function openReview(templateKey){
+  const wrap=document.createElement('div');
+  wrap.className='overlay';
+  let rating=5;
+  wrap.innerHTML=`<div class="modal">
+    <button class="close" onclick="this.closest('.overlay').remove()">✕</button>
+    <h2>Calificar agente</h2>
+    <div class="stars-input" id="starsInput">${[1,2,3,4,5].map(n=>`<span data-n="${n}" class="on">★</span>`).join('')}</div>
+    <label>Comentario (opcional)</label><textarea id="reviewComment" style="min-height:80px"></textarea>
+    <div class="err" id="reviewErr"></div>
+    <div class="foot"><button class="btn" onclick="submitReview('${esc(templateKey)}')">Enviar calificación</button></div>
+  </div>`;
+  document.body.appendChild(wrap);
+  const stars=[...document.querySelectorAll('#starsInput span')];
+  stars.forEach(s=>s.addEventListener('click',()=>{
+    rating=Number(s.dataset.n);
+    stars.forEach(x=>x.classList.toggle('on', Number(x.dataset.n)<=rating));
+  }));
+  wrap._getRating=()=>rating;
+}
+async function submitReview(templateKey){
+  const overlay=document.querySelector('.overlay');
+  const rating=overlay._getRating();
+  const comment=document.getElementById('reviewComment').value.trim();
+  try{
+    await api('/marketplace/templates/'+templateKey+'/review',{method:'POST',body:JSON.stringify({rating,comment:comment||undefined})});
+    overlay.remove();
+    loadCatalog();
+  }catch(e){ document.getElementById('reviewErr').textContent=e.message; }
+}
+
+// ---------- Admin ----------
+async function loadAdmin(){
+  if(!ME||ME.role!=='PLATFORM_ADMIN'){ showView('catalog'); return; }
+  const [tenants, usage, agents]=await Promise.all([
+    api('/admin/tenants'), api('/admin/usage'), api('/admin/tenant-agents'),
+  ]);
+  document.getElementById('tenantsTable').innerHTML=
+    `<tr><th>Empresa</th><th>Slug</th><th>Usuarios</th><th>Agentes</th><th>Creado</th></tr>` +
+    tenants.map(t=>`<tr><td>${esc(t.name)}</td><td>${esc(t.slug)}</td><td>${t._count.users}</td><td>${t._count.agents}</td><td>${new Date(t.createdAt).toLocaleDateString('es-CO')}</td></tr>`).join('');
+  document.getElementById('usageTable').innerHTML=
+    `<tr><th>Empresa</th><th class="num">Corridas</th><th class="num">Tokens in</th><th class="num">Tokens out</th></tr>` +
+    (usage.map(u=>`<tr><td>${esc(u.tenantName)}</td><td>${u.runs}</td><td>${u.inputTokens}</td><td>${u.outputTokens}</td></tr>`).join('')||'<tr><td colspan="4" style="color:var(--muted)">Sin actividad aún</td></tr>');
+  document.getElementById('allAgentsTable').innerHTML=
+    `<tr><th>Empresa</th><th>Agente</th><th>Plantilla</th><th>Estado</th></tr>` +
+    (agents.map(a=>`<tr><td>${esc(a.tenant.name)}</td><td>${esc(a.name)}</td><td>${esc(a.template?.name||'personalizado')}</td><td>${a.active?'Activo':'Inactivo'}</td></tr>`).join('')||'<tr><td colspan="4" style="color:var(--muted)">Ninguno aún</td></tr>');
+}
+
+(async function init(){
+  await refreshMe();
+  await loadCatalog();
+})();
+</script>
+</body>
+</html>
