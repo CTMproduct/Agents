@@ -217,17 +217,23 @@ function renderAgents(m){
     <h2 class="sec" style="margin-top:0">Agentes</h2>
     <div class="agrid">
       ${m.agents.map(a=>`
-      <div class="agent">
+      <div class="agent" style="${a.runs?'':'opacity:.6'}">
         <h3>${esc(a.agentName)}</h3>
-        <div class="mods">${a.models.map(x=>`<span class="tag anthropic">${esc(x)}</span>`).join(' ')}</div>
+        ${a.role?`<div class="mods" style="color:#94a3b8">${esc(a.role)}</div>`:''}
+        <div class="mods">
+          ${a.models.map(x=>`<span class="tag anthropic">${esc(x)}</span>`).join(' ')}
+          ${(a.toolKeys||[]).map(k=>`<span class="tag stub">🔌 ${esc(k)}</span>`).join(' ')}
+        </div>
+        ${a.runs?`
         <div class="mrow"><span>Corridas</span><b>${nf(a.runs)}</b></div>
         <div class="mrow"><span>Tokens (in / out)</span><b>${tok(a.inputTokens)} / ${tok(a.outputTokens)}</b></div>
         <div class="mrow"><span>Costo</span><b style="color:var(--red)">${usd(a.costUsd)}</b></div>
         <div class="mrow"><span>Costo por corrida</span><b>${usd(a.runs?a.costUsd/a.runs:0)}</b></div>
         <div class="mrow"><span>Latencia media</span><b>${a.avgLatencyMs!=null?(a.avgLatencyMs/1000).toFixed(1)+'s':'—'}</b></div>
         <div class="mrow"><span>Confianza media</span><b style="color:var(--green)">${a.avgConfidence!=null?(a.avgConfidence*100).toFixed(0)+'%':'—'}</b></div>
-        <div class="mrow"><span>Revisión humana</span><b>${a.humanReviewPct!=null?a.humanReviewPct+'%':'—'}</b></div>
-      </div>`).join('')||'<p class="empty">Sin corridas de agente aún.</p>'}
+        <div class="mrow"><span>Revisión humana</span><b>${a.humanReviewPct!=null?a.humanReviewPct+'%':'—'}</b></div>`
+        :'<div class="mrow" style="border:0;color:#64748b;font-style:italic">Configurado, aún sin corridas</div>'}
+      </div>`).join('')||'<p class="empty">Sin agentes configurados aún.</p>'}
     </div>
     <h2 class="sec">Comparativa de LLMs</h2>
     <div class="card">

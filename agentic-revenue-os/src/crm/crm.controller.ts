@@ -78,6 +78,16 @@ export class CrmController {
   }
 
   /**
+   * Agentes configurados en la plataforma (registro dinamico: AgentDefinition).
+   * Nuevo agente = nueva fila, sin tocar codigo. Se lista aunque aun no tenga corridas,
+   * para que el dashboard muestre que conectores (toolKeys) tiene disponibles.
+   */
+  @Get('agent-definitions')
+  agentDefinitions() {
+    return this.prisma.agentDefinition.findMany({ orderBy: { name: 'asc' } });
+  }
+
+  /**
    * Metricas de la plataforma agentica: costo por agente/modelo (tokens -> USD),
    * efectividad comercial (conversion, ticket, bruta/neta), SLA y calidad de respuestas.
    * Todo sale de datos reales (AgentRun, Lead, Message, SuggestedReply, AuditEvent).
@@ -86,7 +96,7 @@ export class CrmController {
   async metrics() {
     const copPerUsd = Number(process.env.COP_PER_USD ?? 4100);
 
-    const [runs, leads, replyGroups, editedSent, slaRows] = await Promise.all([
+    const [runs, leads, replyGroups, editedSent, slaRows, definitions] = await Promise.all([
       this.prisma.agentRun.findMany({
         select: {
           agentName: true,
@@ -117,6 +127,7 @@ export class CrmController {
         JOIN (SELECT "conversationId", MIN("createdAt") AS first_out
               FROM "Message" WHERE direction = 'OUTBOUND' GROUP BY 1) o
         USING ("conversationId")`,
+      this.prisma.agentDefinition.findMany(),
     ]);
 
     // --- Costos y desempeño por agente y por modelo ---
@@ -231,11 +242,32 @@ export class CrmController {
         approvalRatePct: sent + rejected ? Number(((sent / (sent + rejected)) * 100).toFixed(1)) : null,
         editRatePct: sent ? Number(((editedSent / sent) * 100).toFixed(1)) : null,
       },
-      agents: [...byAgent.entries()].map(([name, a]) => ({
-        agentName: name,
-        models: [...a.models],
-        ...finishAgg(a),
-      })),
+      // Union: agentes con corridas reales + agentes configurados sin corridas aun
+      // (aparecen igual en el dashboard, marcados como "sin actividad").
+      agents: (() => {
+        const byDefName = new Map(definitions.map((d) => [d.name, d]));
+        const rows = [...byAgent.entries()].map(([name, a]) => ({
+          agentName: name,
+          key: byDefName.get(name)?.key ?? null,
+          role: byDefName.get(name)?.role ?? null,
+          toolKeys: byDefName.get(name)?.toolKeys ?? [],
+          models: [...a.models],
+          ...finishAgg(a),
+        }));
+        const seen = new Set(rows.map((r) => r.agentName));
+        for (const d of definitions) {
+          if (seen.has(d.name)) continue;
+          rows.push({
+            agentName: d.name,
+            key: d.key,
+            role: d.role,
+            toolKeys: d.toolKeys,
+            models: [],
+            ...finishAgg(emptyAgg()),
+          });
+        }
+        return rows;
+      })(),
       models: [...byModel.entries()].map(([key, m]) => ({
         provider: m.provider,
         modelName: key.split('/').slice(1).join('/'),

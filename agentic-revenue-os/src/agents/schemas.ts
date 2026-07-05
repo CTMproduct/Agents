@@ -39,6 +39,16 @@ export const IntakeOutputSchema = z.object({
 export type IntakeOutput = z.infer<typeof IntakeOutputSchema>;
 
 /**
+ * Gate anti-cifras: ningun agente (intake ni especializado) puede poner tarifas
+ * en un texto que llega a un cliente sin pasar por un humano. Compartido para
+ * que TODO agente nuevo (ventas, soporte, cierre...) quede cubierto igual.
+ */
+const MONEY_PATTERN = /(\$|USD|EUR|COP)\s?\d|(\d{1,3}([.,]\d{3})+)/i;
+export function containsMoneyFigures(text: string): boolean {
+  return MONEY_PATTERN.test(text);
+}
+
+/**
  * Gates duros EN CODIGO (no en el prompt). El prompt puede fallar; el codigo no negocia.
  * Devuelve el output ajustado + si requiere humano.
  */
@@ -55,8 +65,7 @@ export function applyHardGates(
     reasons.push(`intent ${output.intent} siempre escala a humano`);
   }
   // El agente jamas puede poner cifras/tarifas en la respuesta sugerida.
-  const moneyPattern = /(\$|USD|EUR|COP)\s?\d|(\d{1,3}([.,]\d{3})+)/i;
-  if (moneyPattern.test(output.suggestedReply)) {
+  if (containsMoneyFigures(output.suggestedReply)) {
     reasons.push('la respuesta sugerida contiene cifras que parecen tarifa');
     output = { ...output, escalateToHuman: true };
   }

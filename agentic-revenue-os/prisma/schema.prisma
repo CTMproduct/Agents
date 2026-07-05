@@ -237,6 +237,23 @@ model KnowledgeDocument {
   @@index([validFrom, validTo])
 }
 
+// ---------- Registro dinámico de agentes (plataforma no monolítica) ----------
+// Cada fila es un agente independiente (ventas, soporte, cierre...). Se agrega
+// o desactiva sin tocar código: nuevo agente = nueva fila + prompt + toolKeys.
+// toolKeys referencia entradas del ToolRegistry en código (conectores plug-in).
+
+model AgentDefinition {
+  id           String   @id @default(cuid())
+  key          String   @unique // "sales" | "support" | "closing" | ...
+  name         String // nombre visible en el dashboard de costos
+  role         String // descripcion corta del rol comercial
+  systemPrompt String
+  toolKeys     String[] // ej. ["knowledge_search", "crm_lookup", "web_search"]
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
 // ---------- Configuración de autonomía (Responsible Scaling interno) ----------
 
 model AutonomyPolicy {

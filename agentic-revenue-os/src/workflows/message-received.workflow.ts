@@ -5,13 +5,30 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CrmService } from '../crm/crm.service';
 import { IntakeAgentService } from '../agents/intake-agent.service';
+import { AgentRunnerService } from '../agents/agent-runner.service';
+import { containsMoneyFigures } from '../agents/schemas';
 import { NormalizedChannelEvent } from '../channels/types';
 
 /**
- * Pipeline Fase 1 (Autonomia L0):
- * mensaje -> contacto -> conversacion -> IntakeAgent -> lead + tarea
- * -> respuesta sugerida PENDIENTE DE APROBACION HUMANA -> auditoria.
- * Nada se envia al cliente sin aprobacion.
+ * Que agente especializado atiende cada intencion. Es la unica pieza de
+ * "routing" del sistema: una tabla de datos, no logica de agente. Agregar un
+ * agente nuevo (ej. "retention") es una fila en AgentDefinition + una entrada
+ * aqui -- nunca tocar el prompt o el comportamiento de otro agente.
+ */
+const INTENT_AGENT_ROUTE: Partial<Record<LeadIntent, string>> = {
+  QUOTE_REQUEST: 'sales',
+  READY_TO_BOOK: 'closing',
+  COMPLAINT: 'support',
+  POST_SALE: 'support',
+};
+
+/**
+ * Pipeline Fase 1+ (Autonomia L0):
+ * mensaje -> contacto -> conversacion -> IntakeAgent (clasifica + extrae)
+ *   -> agente especializado opcional (ventas/soporte/cierre, por intent)
+ *   -> lead + tarea -> respuesta sugerida PENDIENTE DE APROBACION HUMANA -> auditoria.
+ * Nada se envia al cliente sin aprobacion. El gate anti-cifras aplica a
+ * cualquier agente que toque la respuesta sugerida, no solo al intake.
  */
 @Injectable()
 export class MessageReceivedWorkflow {
@@ -21,6 +38,7 @@ export class MessageReceivedWorkflow {
     private readonly prisma: PrismaService,
     private readonly crm: CrmService,
     private readonly intake: IntakeAgentService,
+    private readonly specialized: AgentRunnerService,
     private readonly audit: AuditService,
   ) {}
 
@@ -45,7 +63,7 @@ export class MessageReceivedWorkflow {
         .map((m) => `${m.direction === MessageDirection.INBOUND ? 'CLIENTE' : 'CTM'}: ${m.body}`)
         .join('\n');
 
-      // 3. Agente (una sola llamada, output validado)
+      // 3. Agente de intake (una sola llamada, output validado)
       const result = await this.intake.run({ conversationText, traceId });
       const o = result.output;
 
@@ -69,29 +87,56 @@ export class MessageReceivedWorkflow {
         traceId,
       );
 
-      // 5. Tarea para el asesor
+      // 5. Agente especializado segun intencion (ventas/soporte/cierre). Es
+      // aditivo: si no hay ruta o el agente falla, el flujo sigue con el
+      // borrador del intake -- nunca bloquea el pipeline base.
+      let replyBody = o.suggestedReply;
+      let specializedGateReasons: string[] = [];
+      const routeKey = INTENT_AGENT_ROUTE[o.intent as LeadIntent];
+      if (routeKey) {
+        try {
+          const specializedResult = await this.specialized.run(routeKey, {
+            conversationText,
+            contactId: contact.id,
+            leadId: lead.id,
+            traceId,
+          });
+          if (specializedResult?.text) {
+            if (containsMoneyFigures(specializedResult.text)) {
+              specializedGateReasons.push(`agente '${routeKey}' incluyo cifras: reemplazado por borrador seguro`);
+            } else {
+              replyBody = specializedResult.text;
+            }
+          }
+        } catch (e) {
+          this.logger.warn(`Agente especializado '${routeKey}' fallo, sigue con borrador de intake: ${(e as Error).message}`);
+        }
+      }
+      const allGateReasons = [...result.gateReasons, ...specializedGateReasons];
+
+      // 6. Tarea para el asesor
       const taskTitle =
-        result.gateReasons.length > 0
+        allGateReasons.length > 0
           ? `ESCALADO: revisar lead (${o.intent})`
           : `Aprobar respuesta sugerida (score ${(o.score * 100).toFixed(0)}%)`;
       await this.crm.createTask(
         lead.id,
         taskTitle,
-        `Motivos: ${result.gateReasons.join('; ') || 'flujo normal L0'}. Trace: ${traceId}`,
+        `Motivos: ${allGateReasons.join('; ') || 'flujo normal L0'}. Trace: ${traceId}`,
         traceId,
       );
 
-      // 6. Respuesta sugerida: SIEMPRE pendiente en Fase 1
+      // 7. Respuesta sugerida: SIEMPRE pendiente en Fase 1
       await this.prisma.suggestedReply.create({
         data: {
           conversationId: conversation.id,
-          body: o.suggestedReply,
+          body: replyBody,
           status: SuggestedReplyStatus.PENDING_APPROVAL,
           agentRunId: result.agentRunId,
         },
       });
 
-      this.logger.log(`Pipeline OK trace=${traceId} lead=${lead.id}`);
+      this.logger.log(`Pipeline OK trace=${traceId} lead=${lead.id} route=${routeKey ?? 'ninguna'}`);
     } catch (e) {
       this.logger.error(`Pipeline fallo trace=${traceId}: ${(e as Error).message}`);
       await this.audit.log({

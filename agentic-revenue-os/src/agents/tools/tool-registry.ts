@@ -1,0 +1,110 @@
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+
+export interface ToolContext {
+  contactId: string;
+  leadId?: string | null;
+  traceId: string;
+}
+
+/** Contrato de un conector: nombre, schema JSON de entrada, ejecucion. */
+export interface AgentTool {
+  key: string;
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+  execute(input: Record<string, unknown>, ctx: ToolContext): Promise<unknown>;
+}
+
+/** Declaracion de una herramienta ejecutada por Anthropic (no por nuestro codigo). */
+export interface ServerTool {
+  key: string;
+  anthropicType: string;
+  anthropicName: string;
+}
+
+/**
+ * Registro de conectores. Agregar una API nueva = agregar una entrada aqui
+ * (o inyectar un provider externo) y referenciarla por key en AgentDefinition.toolKeys.
+ * Ningun agente ni el workflow conocen la lista completa: solo piden sus toolKeys.
+ */
+@Injectable()
+export class ToolRegistry {
+  private readonly clientTools = new Map<string, AgentTool>();
+  private readonly serverTools = new Map<string, ServerTool>();
+
+  constructor(private readonly prisma: PrismaService) {
+    this.register(this.buildKnowledgeSearchTool());
+    this.register(this.buildCrmLookupTool());
+    this.registerServerTool({ key: 'web_search', anthropicType: 'web_search_20260209', anthropicName: 'web_search' });
+  }
+
+  register(tool: AgentTool) {
+    this.clientTools.set(tool.key, tool);
+  }
+
+  registerServerTool(tool: ServerTool) {
+    this.serverTools.set(tool.key, tool);
+  }
+
+  resolveClientTools(keys: string[]): AgentTool[] {
+    return keys.map((k) => this.clientTools.get(k)).filter((t): t is AgentTool => !!t);
+  }
+
+  resolveServerTools(keys: string[]): ServerTool[] {
+    return keys.map((k) => this.serverTools.get(k)).filter((t): t is ServerTool => !!t);
+  }
+
+  /** Consulta tarifarios/documentos VIGENTES. El gate "sin documento vigente no se cotiza" vive aqui. */
+  private buildKnowledgeSearchTool(): AgentTool {
+    return {
+      key: 'knowledge_search',
+      name: 'knowledge_search',
+      description:
+        'Busca documentos de conocimiento (tarifarios, politicas) VIGENTES por destino/mercado. ' +
+        'Si no hay resultados, no existe informacion vigente y no se debe cotizar.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          market: { type: 'string', description: 'Mercado o destino, ej. CARIBE, EUROPA, Punta Cana' },
+        },
+        required: ['market'],
+      },
+      execute: async (input) => {
+        const market = String(input.market ?? '');
+        const now = new Date();
+        const docs = await this.prisma.knowledgeDocument.findMany({
+          where: {
+            market: { contains: market, mode: 'insensitive' },
+            OR: [{ validTo: null }, { validTo: { gte: now } }],
+            AND: [{ OR: [{ validFrom: null }, { validFrom: { lte: now } }] }],
+          },
+          take: 3,
+          select: { title: true, supplier: true, currency: true, validTo: true, content: true },
+        });
+        return docs.length
+          ? { found: true, documents: docs }
+          : { found: false, message: `Sin documentos vigentes para "${market}". No cotizar.` };
+      },
+    };
+  }
+
+  /** Historial del contacto en el propio CRM: leads previos, tareas abiertas. */
+  private buildCrmLookupTool(): AgentTool {
+    return {
+      key: 'crm_lookup',
+      name: 'crm_lookup',
+      description: 'Consulta el historial de leads y tareas abiertas del contacto actual en el CRM.',
+      inputSchema: { type: 'object', properties: {} },
+      execute: async (_input, ctx) => {
+        const leads = await this.prisma.lead.findMany({
+          where: { contactId: ctx.contactId },
+          orderBy: { updatedAt: 'desc' },
+          take: 5,
+          select: { intent: true, status: true, destination: true, score: true, updatedAt: true },
+        });
+        return { leads };
+      },
+    };
+  }
+}
