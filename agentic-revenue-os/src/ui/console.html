@@ -6,203 +6,281 @@
 <title>Agentic Revenue OS — CTM En Línea</title>
 <style>
   :root{
-    --navy:#12263f;--navy2:#1b3a5c;--bg:#f4f6f9;--card:#fff;--ink:#22303e;--muted:#7a8794;
-    --blue:#0b6bcb;--green:#12a150;--yellow:#e6a700;--red:#c62828;--purple:#7b4fd6;--teal:#0e8f8f;
+    --bg:#070b14;--bg2:#0b1120;--panel:rgba(17,25,44,.72);--stroke:rgba(94,234,212,.12);
+    --ink:#e6edf7;--muted:#8494ab;--cyan:#22d3ee;--teal:#2dd4bf;--violet:#a78bfa;
+    --green:#34d399;--amber:#fbbf24;--red:#fb7185;--blue:#60a5fa;
+    --glow:0 0 22px rgba(34,211,238,.16);
   }
-  *{box-sizing:border-box} body{margin:0;font-family:system-ui,'Segoe UI',sans-serif;background:var(--bg);color:var(--ink);height:100vh;display:flex;overflow:hidden}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Segoe UI',system-ui,sans-serif;background:
+    radial-gradient(1100px 500px at 85% -10%,rgba(167,139,250,.14),transparent 60%),
+    radial-gradient(900px 480px at -10% 110%,rgba(34,211,238,.12),transparent 60%),
+    var(--bg);color:var(--ink);height:100vh;display:flex;overflow:hidden}
+  ::selection{background:rgba(34,211,238,.35)}
+  ::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:#1e293b;border-radius:9px}
   /* Sidebar */
-  aside{width:86px;background:var(--navy);display:flex;flex-direction:column;align-items:center;padding-top:14px;gap:4px;flex-shrink:0}
-  aside .logo{color:#fff;font-weight:800;font-size:.8rem;letter-spacing:.5px;margin-bottom:10px;text-align:center}
-  aside button{background:none;border:0;color:#9fb3c8;width:72px;padding:10px 2px;border-radius:10px;cursor:pointer;font-size:.68rem;display:flex;flex-direction:column;align-items:center;gap:4px}
-  aside button svg{width:22px;height:22px;fill:currentColor}
-  aside button.active,aside button:hover{background:var(--navy2);color:#fff}
-  aside .badge{background:var(--red);color:#fff;border-radius:9px;font-size:.62rem;padding:1px 6px;margin-top:-30px;margin-left:30px}
-  /* Main */
+  aside{width:92px;background:rgba(7,11,20,.85);border-right:1px solid var(--stroke);display:flex;flex-direction:column;align-items:center;padding-top:16px;gap:6px;flex-shrink:0;backdrop-filter:blur(8px)}
+  .logo{font-weight:800;font-size:.72rem;letter-spacing:2px;text-align:center;background:linear-gradient(120deg,var(--cyan),var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:14px}
+  aside button{background:none;border:0;color:var(--muted);width:76px;padding:11px 2px;border-radius:12px;cursor:pointer;font-size:.66rem;display:flex;flex-direction:column;align-items:center;gap:5px;letter-spacing:.4px}
+  aside button svg{width:21px;height:21px;fill:currentColor}
+  aside button.active{background:linear-gradient(160deg,rgba(34,211,238,.14),rgba(167,139,250,.12));color:var(--cyan);box-shadow:var(--glow)}
+  aside button:hover{color:#cbd5e1}
+  /* Layout */
   main{flex:1;display:flex;flex-direction:column;min-width:0}
-  header{background:#fff;border-bottom:1px solid #e3e8ee;padding:12px 22px;display:flex;align-items:center;gap:16px}
-  header h1{font-size:1.02rem;margin:0;font-weight:700}
-  header .sub{color:var(--muted);font-size:.8rem}
-  header .right{margin-left:auto;display:flex;align-items:center;gap:10px}
-  .pill{background:#eaf3ff;color:var(--blue);border-radius:20px;padding:4px 12px;font-size:.78rem;font-weight:600}
-  .pill.green{background:#e7f6ec;color:var(--green)}
-  #content{flex:1;overflow:auto;padding:18px 22px}
+  header{padding:14px 26px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--stroke);background:rgba(10,15,28,.6);backdrop-filter:blur(8px)}
+  header h1{font-size:1rem;margin:0;font-weight:700;letter-spacing:.5px}
+  header .sub{color:var(--muted);font-size:.78rem}
+  header .right{margin-left:auto;display:flex;gap:10px;align-items:center}
+  .pill{border:1px solid var(--stroke);border-radius:20px;padding:5px 13px;font-size:.74rem;font-weight:600;color:var(--teal);background:rgba(45,212,191,.07)}
+  .pill.warn{color:var(--amber);background:rgba(251,191,36,.07)}
+  #content{flex:1;overflow:auto;padding:20px 26px}
   .hidden{display:none!important}
-  /* Dashboard */
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
-  .stat{background:var(--navy);color:#fff;border-radius:12px;padding:18px}
-  .stat .n{font-size:2rem;font-weight:800}
-  .stat .l{font-size:.78rem;color:#9fb3c8;text-transform:uppercase;letter-spacing:.4px}
-  .stat.light{background:var(--card);color:var(--ink);border:1px solid #e3e8ee}
-  .stat.light .l{color:var(--muted)}
-  .funnelbar{display:flex;gap:10px;margin:18px 0 6px;flex-wrap:wrap}
-  .funnelbar .fseg{flex:1;min-width:130px;background:#fff;border:1px solid #e3e8ee;border-radius:10px;padding:10px 12px;border-top:4px solid var(--blue)}
-  .fseg .fn{font-weight:800;font-size:1.25rem}.fseg .fl{font-size:.72rem;color:var(--muted);text-transform:uppercase}
+  /* Cards */
+  .kgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:14px;margin-bottom:20px}
+  .kpi{background:var(--panel);border:1px solid var(--stroke);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden;backdrop-filter:blur(6px)}
+  .kpi::before{content:'';position:absolute;inset:0 0 auto 0;height:2px;background:linear-gradient(90deg,var(--c,#22d3ee),transparent)}
+  .kpi .v{font-size:1.55rem;font-weight:800;font-variant-numeric:tabular-nums;color:var(--c,#22d3ee);text-shadow:0 0 18px rgba(34,211,238,.25)}
+  .kpi .l{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;margin-top:3px}
+  .kpi .s{font-size:.7rem;color:#64748b;margin-top:5px}
+  h2.sec{font-size:.78rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin:22px 0 12px;font-weight:700}
+  .card{background:var(--panel);border:1px solid var(--stroke);border-radius:14px;padding:16px 18px;backdrop-filter:blur(6px)}
+  table{width:100%;border-collapse:collapse;font-size:.8rem}
+  th{text-align:left;color:var(--muted);font-size:.66rem;text-transform:uppercase;letter-spacing:1px;padding:8px 10px;border-bottom:1px solid var(--stroke)}
+  td{padding:9px 10px;border-bottom:1px solid rgba(148,163,184,.06);font-variant-numeric:tabular-nums}
+  td.num{text-align:right} th.num{text-align:right}
+  .tag{border-radius:8px;padding:2px 9px;font-size:.68rem;font-weight:700}
+  .tag.anthropic{background:rgba(167,139,250,.14);color:var(--violet)}
+  .tag.openai{background:rgba(52,211,153,.12);color:var(--green)}
+  .tag.stub{background:rgba(148,163,184,.12);color:#94a3b8}
+  .bar{height:7px;border-radius:5px;background:rgba(148,163,184,.12);overflow:hidden}
+  .bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--cyan),var(--violet))}
+  /* Agent cards */
+  .agrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+  .agent{background:var(--panel);border:1px solid var(--stroke);border-radius:14px;padding:18px;backdrop-filter:blur(6px)}
+  .agent h3{margin:0 0 2px;font-size:.95rem;color:var(--cyan)}
+  .agent .mods{font-size:.7rem;color:var(--muted);margin-bottom:12px}
+  .mrow{display:flex;justify-content:space-between;font-size:.78rem;padding:5px 0;border-bottom:1px solid rgba(148,163,184,.06)}
+  .mrow b{font-variant-numeric:tabular-nums}
   /* Kanban */
   #board{display:flex;gap:14px;align-items:flex-start;min-height:70vh}
-  .col{background:#eef1f5;border-radius:12px;min-width:250px;width:250px;padding:10px;flex-shrink:0;border-top:4px solid var(--blue)}
-  .col h3{font-size:.78rem;letter-spacing:.5px;margin:4px 6px 10px;color:#4a5866;display:flex;justify-content:space-between}
-  .col.drag{outline:2px dashed var(--blue)}
-  .lead{background:#fff;border-radius:10px;padding:10px 12px;margin-bottom:9px;box-shadow:0 1px 2px rgba(20,40,70,.08);cursor:grab;border-left:3px solid transparent}
-  .lead .nm{font-weight:700;font-size:.86rem;color:var(--blue)}
-  .lead .dt{font-size:.76rem;color:var(--muted);margin-top:2px}
-  .lead .row{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
-  .score{font-size:.7rem;font-weight:700;border-radius:10px;padding:2px 8px;background:#e7f6ec;color:var(--green)}
-  .score.mid{background:#fff6de;color:var(--yellow)} .score.low{background:#fdecea;color:var(--red)}
-  .money{font-size:.76rem;color:var(--ink);font-weight:600}
+  .col{background:rgba(13,20,36,.6);border:1px solid var(--stroke);border-radius:14px;min-width:250px;width:250px;padding:10px;flex-shrink:0;border-top:3px solid var(--cc)}
+  .col h3{font-size:.7rem;letter-spacing:1.4px;margin:6px 6px 12px;color:var(--muted);display:flex;justify-content:space-between;text-transform:uppercase}
+  .col.drag{outline:2px dashed var(--cyan)}
+  .lead{background:rgba(20,30,52,.85);border:1px solid rgba(148,163,184,.1);border-radius:11px;padding:11px 13px;margin-bottom:9px;cursor:grab}
+  .lead .nm{font-weight:700;font-size:.85rem;color:var(--blue)}
+  .lead .dt{font-size:.73rem;color:var(--muted);margin-top:2px}
+  .lead .row{display:flex;justify-content:space-between;align-items:center;margin-top:7px}
+  .score{font-size:.68rem;font-weight:800;border-radius:9px;padding:2px 8px;background:rgba(52,211,153,.14);color:var(--green)}
+  .score.mid{background:rgba(251,191,36,.13);color:var(--amber)} .score.low{background:rgba(251,113,133,.13);color:var(--red)}
+  .money{font-size:.74rem;color:var(--teal);font-weight:700}
   /* Approvals */
-  .apr{background:#fff;border:1px solid #e3e8ee;border-radius:12px;padding:14px 16px;margin-bottom:14px;max-width:820px}
-  .apr .meta{font-size:.8rem;color:var(--muted);margin-bottom:8px}
-  .apr textarea{width:100%;min-height:88px;font:inherit;padding:10px;border:1px solid #d6dde5;border-radius:8px}
-  .apr .acts{display:flex;gap:8px;margin-top:8px}
-  .apr input{width:170px;padding:8px;border:1px solid #d6dde5;border-radius:8px}
-  .btn{border:0;border-radius:8px;padding:9px 16px;font-weight:600;cursor:pointer;color:#fff;background:var(--green)}
-  .btn.red{background:var(--red)} .btn.blue{background:var(--blue)}
+  .apr{background:var(--panel);border:1px solid var(--stroke);border-radius:14px;padding:16px;margin-bottom:14px;max-width:840px}
+  .apr .meta{font-size:.78rem;color:var(--muted);margin-bottom:9px}
+  .apr textarea{width:100%;min-height:92px;font:inherit;font-size:.85rem;padding:11px;border:1px solid rgba(148,163,184,.18);border-radius:10px;background:#0b1220;color:var(--ink)}
+  .apr .acts{display:flex;gap:8px;margin-top:10px}
+  .apr input{width:170px;padding:9px;border:1px solid rgba(148,163,184,.18);border-radius:9px;background:#0b1220;color:var(--ink)}
+  .btn{border:0;border-radius:9px;padding:10px 18px;font-weight:700;cursor:pointer;color:#04121a;background:linear-gradient(120deg,var(--teal),var(--cyan));letter-spacing:.3px}
+  .btn.red{background:linear-gradient(120deg,#fb7185,#f43f5e);color:#fff}
   /* Chats */
-  #chats{display:flex;gap:0;height:calc(100vh - 120px);background:#fff;border:1px solid #e3e8ee;border-radius:12px;overflow:hidden}
-  #convlist{width:320px;border-right:1px solid #e3e8ee;overflow:auto;flex-shrink:0}
-  .conv{padding:12px 14px;border-bottom:1px solid #eef1f5;cursor:pointer}
-  .conv:hover,.conv.sel{background:#eaf3ff}
-  .conv .cn{font-weight:700;font-size:.86rem} .conv .cp{font-size:.78rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .conv .ct{font-size:.7rem;color:var(--muted)}
-  #thread{flex:1;overflow:auto;padding:18px;background:#f7f9fb}
-  .msg{max-width:65%;padding:9px 13px;border-radius:12px;margin-bottom:8px;font-size:.86rem;white-space:pre-wrap}
-  .msg.in{background:#fff;border:1px solid #e3e8ee;border-bottom-left-radius:3px}
-  .msg.out{background:#d9f2e3;margin-left:auto;border-bottom-right-radius:3px}
-  .msg .mt{font-size:.66rem;color:var(--muted);margin-top:4px}
-  .empty{color:var(--muted);text-align:center;margin-top:16vh;font-size:.9rem}
-  h2.sec{font-size:.95rem;margin:4px 0 14px}
+  #chats{display:flex;height:calc(100vh - 118px);background:var(--panel);border:1px solid var(--stroke);border-radius:14px;overflow:hidden}
+  #convlist{width:320px;border-right:1px solid var(--stroke);overflow:auto;flex-shrink:0}
+  .conv{padding:13px 15px;border-bottom:1px solid rgba(148,163,184,.06);cursor:pointer}
+  .conv:hover,.conv.sel{background:rgba(34,211,238,.07)}
+  .conv .cn{font-weight:700;font-size:.84rem} .conv .cp{font-size:.76rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .conv .ct{font-size:.68rem;color:#64748b}
+  #thread{flex:1;overflow:auto;padding:18px;background:rgba(7,11,20,.5)}
+  .msg{max-width:65%;padding:10px 14px;border-radius:13px;margin-bottom:9px;font-size:.84rem;white-space:pre-wrap}
+  .msg.in{background:rgba(30,41,59,.9);border:1px solid rgba(148,163,184,.1);border-bottom-left-radius:4px}
+  .msg.out{background:rgba(45,212,191,.13);border:1px solid rgba(45,212,191,.2);margin-left:auto;border-bottom-right-radius:4px}
+  .msg .mt{font-size:.64rem;color:var(--muted);margin-top:5px}
+  .empty{color:var(--muted);text-align:center;margin-top:14vh;font-size:.88rem}
+  svg.chart{width:100%;height:120px}
+  a{color:var(--cyan)}
 </style>
 </head>
 <body>
 <aside>
-  <div class="logo">CTM<br/>AGENTIC</div>
-  <button id="nav-panel" onclick="show('panel')">
-    <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>Panel</button>
-  <button id="nav-board" onclick="show('board_v')">
-    <svg viewBox="0 0 24 24"><path d="M4 5h4v14H4zM10 5h4v9h-4zM16 5h4v6h-4z"/></svg>Embudo</button>
-  <button id="nav-apr" onclick="show('apr_v')">
-    <svg viewBox="0 0 24 24"><path d="M9 16.2l-3.5-3.5L4 14.2 9 19.2 20 8.2l-1.5-1.5z"/></svg>Aprobar</button>
-  <button id="nav-chats" onclick="show('chats_v')">
-    <svg viewBox="0 0 24 24"><path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/></svg>Chats</button>
+  <div class="logo">CTM<br/>AGENTIC<br/>OS</div>
+  <button id="nav-panel" onclick="show('panel')"><svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>Panel</button>
+  <button id="nav-agents" onclick="show('agents_v')"><svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 0 1 5 5v1a5 5 0 0 1-10 0V7a5 5 0 0 1 5-5zm-8 18a8 8 0 0 1 16 0v2H4v-2z"/></svg>Agentes</button>
+  <button id="nav-board" onclick="show('board_v')"><svg viewBox="0 0 24 24"><path d="M4 5h4v14H4zM10 5h4v9h-4zM16 5h4v6h-4z"/></svg>Embudo</button>
+  <button id="nav-apr" onclick="show('apr_v')"><svg viewBox="0 0 24 24"><path d="M9 16.2l-3.5-3.5L4 14.2 9 19.2 20 8.2l-1.5-1.5z"/></svg>Aprobar</button>
+  <button id="nav-chats" onclick="show('chats_v')"><svg viewBox="0 0 24 24"><path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/></svg>Chats</button>
 </aside>
 <main>
   <header>
-    <h1 id="title">Panel de control</h1>
+    <h1 id="title">Centro de comando</h1>
     <span class="sub" id="subtitle"></span>
     <div class="right">
-      <span class="pill green" id="hpill">● en línea</span>
-      <span class="pill" id="ppill">0 pendientes</span>
+      <span class="pill" id="hpill">● en línea</span>
+      <span class="pill warn" id="ppill">0 pendientes</span>
     </div>
   </header>
   <div id="content">
-    <section id="panel">
-      <div class="funnelbar" id="funnel"></div>
-      <div class="grid" id="statgrid"></div>
-    </section>
+    <section id="panel"></section>
+    <section id="agents_v" class="hidden"></section>
     <section id="board_v" class="hidden"><div id="board"></div></section>
-    <section id="apr_v" class="hidden"><h2 class="sec">Respuestas pendientes de aprobación — Autonomía L0: nada se envía sin visto bueno humano</h2><div id="aprlist"></div></section>
+    <section id="apr_v" class="hidden"><div id="aprlist"></div></section>
     <section id="chats_v" class="hidden">
-      <div id="chats">
-        <div id="convlist"></div>
-        <div id="thread"><p class="empty">Selecciona una conversación</p></div>
-      </div>
+      <div id="chats"><div id="convlist"></div><div id="thread"><p class="empty">Selecciona una conversación</p></div></div>
     </section>
   </div>
 </main>
 <script>
 const STAGES=[
-  ['NEW','Leads entrantes','#0b6bcb'],
-  ['QUALIFIED','Calificado','#0e8f8f'],
-  ['IN_PROGRESS','Cotización / gestión','#7b4fd6'],
-  ['ESCALATED','Escalado a humano','#e6a700'],
-  ['WON','Ganado','#12a150'],
-  ['LOST','Perdido','#c62828'],
+  ['NEW','Entrantes','#60a5fa'],['QUALIFIED','Calificado','#2dd4bf'],['IN_PROGRESS','Cotización','#a78bfa'],
+  ['ESCALATED','Escalado','#fbbf24'],['WON','Ganado','#34d399'],['LOST','Perdido','#fb7185'],
 ];
-const INTENTS={INFORMATION:'Información',QUOTE_REQUEST:'Cotización',READY_TO_BOOK:'Listo para reservar',POST_SALE:'Postventa',COMPLAINT:'Queja',UNKNOWN:'—'};
+const INTENTS={INFORMATION:'Información',QUOTE_REQUEST:'Cotización',READY_TO_BOOK:'Reserva',POST_SALE:'Postventa',COMPLAINT:'Queja',UNKNOWN:'—'};
 const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const fmt=d=>new Date(d).toLocaleString('es-CO',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-const money=(a,c)=>a?Number(a).toLocaleString('es-CO')+' '+(c||''):'';
+const nf=n=>n==null?'—':Number(n).toLocaleString('es-CO');
+const usd=n=>n==null?'—':'$'+Number(n).toLocaleString('en-US',{maximumFractionDigits:4});
+const cop=n=>n==null?'—':'$'+Math.round(n).toLocaleString('es-CO')+' COP';
+const tok=n=>n>=1e6?(n/1e6).toFixed(2)+'M':n>=1e3?(n/1e3).toFixed(1)+'K':nf(n);
+const secs=s=>s==null?'—':s<60?s+'s':s<3600?Math.round(s/60)+'m':(s/3600).toFixed(1)+'h';
 let view='panel';
 
 function show(v){
   view=v;
-  for(const s of ['panel','board_v','apr_v','chats_v']) document.getElementById(s).classList.toggle('hidden',s!==v);
+  for(const s of ['panel','agents_v','board_v','apr_v','chats_v']) document.getElementById(s).classList.toggle('hidden',s!==v);
+  const navMap={panel:'nav-panel',agents_v:'nav-agents',board_v:'nav-board',apr_v:'nav-apr',chats_v:'nav-chats'};
   document.querySelectorAll('aside button').forEach(b=>b.classList.remove('active'));
-  ({panel:'nav-panel',board_v:'nav-board',apr_v:'nav-apr',chats_v:'nav-chats'})[v] &&
-    document.getElementById(({panel:'nav-panel',board_v:'nav-board',apr_v:'nav-apr',chats_v:'nav-chats'})[v]).classList.add('active');
-  document.getElementById('title').textContent={panel:'Panel de control',board_v:'Embudo de ventas',apr_v:'Aprobaciones',chats_v:'Conversaciones'}[v];
+  document.getElementById(navMap[v]).classList.add('active');
+  document.getElementById('title').textContent={panel:'Centro de comando',agents_v:'Agentes & LLMs',board_v:'Embudo de ventas',apr_v:'Aprobaciones (L0)',chats_v:'Conversaciones'}[v];
   refresh();
 }
-
-async function j(url,opts){const r=await fetch(url,opts);if(!r.ok)throw new Error(await r.text());return r.json();}
+async function j(u,o){const r=await fetch(u,o);if(!r.ok)throw new Error(await r.text());return r.json();}
 
 async function refresh(){
   try{
     const st=await j('/crm/stats');
     document.getElementById('ppill').textContent=st.pendingApprovals+' pendientes';
-    document.getElementById('subtitle').textContent=st.totalLeads+' leads · '+st.conversations+' conversaciones';
-    if(view==='panel')renderPanel(st);
+    document.getElementById('subtitle').textContent=st.totalLeads+' leads · '+st.agentRuns+' corridas IA';
+    if(view==='panel'||view==='agents_v'){const m=await j('/crm/metrics'); view==='panel'?renderPanel(m):renderAgents(m);}
     if(view==='board_v')renderBoard(await j('/crm/leads'));
     if(view==='apr_v')renderApprovals(await j('/approvals/pending'));
     if(view==='chats_v')renderConvs(await j('/crm/conversations'));
     const h=await j('/health');
-    const hp=document.getElementById('hpill');
-    hp.textContent=h.status==='ok'?'● en línea':'● degradado';
-    hp.style.color=h.status==='ok'?'':'#c62828';
+    document.getElementById('hpill').textContent=h.status==='ok'?'● en línea':'● degradado';
   }catch(e){console.error(e);}
 }
 
-function renderPanel(st){
-  document.getElementById('funnel').innerHTML=STAGES.map(([k,l,c])=>
-    `<div class="fseg" style="border-top-color:${c}"><div class="fn">${st.leadsByStatus[k]??0}</div><div class="fl">${l}</div></div>`).join('');
-  const cards=[
-    ['Leads totales',st.totalLeads],['Contactos',st.contacts],['Conversaciones',st.conversations],
-    ['Mensajes',st.messages],['Corridas de agente',st.agentRuns],
-    ['Confianza media',st.avgConfidence?(st.avgConfidence*100).toFixed(0)+'%':'—'],
-    ['Latencia media IA',st.avgLatencyMs?(st.avgLatencyMs/1000).toFixed(1)+'s':'—'],
-    ['Pendientes de aprobación',st.pendingApprovals],
-  ];
-  document.getElementById('statgrid').innerHTML=cards.map(([l,n],i)=>
-    `<div class="stat ${i%2?'light':''}"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
+function kpi(v,l,s,c){return `<div class="kpi" style="--c:${c}"><div class="v">${v}</div><div class="l">${l}</div>${s?`<div class="s">${s}</div>`:''}</div>`;}
+
+function renderPanel(m){
+  const b=m.business, ai=m.ai, r=m.replies, sla=m.sla;
+  const pipe=Object.entries(b.pipelineByCurrency).map(([c,v])=>nf(v)+' '+c).join(' · ')||'0';
+  const gross=Object.entries(b.grossWonByCurrency).map(([c,v])=>nf(v)+' '+c).join(' · ')||'0';
+  const ticket=Object.entries(b.avgTicketByCurrency).map(([c,v])=>nf(v)+' '+c).join(' · ')||'—';
+  document.getElementById('panel').innerHTML=`
+    <h2 class="sec">Comercial</h2>
+    <div class="kgrid">
+      ${kpi(pipe,'Pipeline abierto','presupuestos de leads activos','#60a5fa')}
+      ${kpi(gross,'Ganancia bruta','suma presupuestos leads GANADOS','#34d399')}
+      ${kpi(cop(b.netCopEstimate).replace(' COP',''),'Neta estimada (COP)','bruta − costo IA @ TRM '+nf(b.copPerUsd),'#2dd4bf')}
+      ${kpi(ticket,'Ticket promedio','por lead ganado','#a78bfa')}
+      ${kpi(b.conversionPct+'%','Conversión',b.won+' ganados de '+b.totalLeads+' leads','#fbbf24')}
+      ${kpi(secs(sla.avgFirstResponseSeconds),'SLA 1ª respuesta',sla.conversationsMeasured+' conversaciones medidas','#22d3ee')}
+    </div>
+    <h2 class="sec">Motor agéntico</h2>
+    <div class="kgrid">
+      ${kpi(nf(ai.totalRuns),'Corridas IA','','#22d3ee')}
+      ${kpi(tok(ai.totalInputTokens+ai.totalOutputTokens),'Tokens totales',tok(ai.totalInputTokens)+' in · '+tok(ai.totalOutputTokens)+' out','#a78bfa')}
+      ${kpi(usd(ai.totalCostUsd),'Costo IA (USD)','≈ '+cop(ai.totalCostUsd*b.copPerUsd),'#fb7185')}
+      ${kpi(r.approvalRatePct!=null?r.approvalRatePct+'%':'—','Eficiencia (aprobación)',r.sent+' enviadas · '+r.rejected+' rechazadas','#34d399')}
+      ${kpi(r.editRatePct!=null?r.editRatePct+'%':'—','Tasa de edición','respuestas corregidas por el asesor','#fbbf24')}
+      ${kpi(b.escalated,'Leads escalados','gates duros activados','#fb7185')}
+    </div>
+    <h2 class="sec">Actividad IA — últimos 14 días</h2>
+    <div class="card">${chart(ai.days)}</div>`;
+}
+
+function chart(days){
+  const max=Math.max(1,...days.map(d=>d.runs));
+  const w=980,h=110,bw=w/days.length;
+  return `<svg class="chart" viewBox="0 0 ${w} ${h+22}" preserveAspectRatio="none">
+    ${days.map((d,i)=>{
+      const bh=Math.round(d.runs/max*h);
+      return `<rect x="${i*bw+6}" y="${h-bh}" width="${bw-12}" height="${Math.max(bh,1)}" rx="4"
+        fill="url(#g)" opacity="${d.runs?1:.25}"><title>${d.date}: ${d.runs} corridas · ${usd(d.costUsd)}</title></rect>
+      <text x="${i*bw+bw/2}" y="${h+15}" font-size="9" fill="#64748b" text-anchor="middle">${d.date.slice(5)}</text>`;
+    }).join('')}
+    <defs><linearGradient id="g" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#a78bfa"/></linearGradient></defs>
+  </svg>`;
+}
+
+function renderAgents(m){
+  const totalCost=Math.max(1e-9,m.ai.totalCostUsd);
+  document.getElementById('agents_v').innerHTML=`
+    <h2 class="sec" style="margin-top:0">Agentes</h2>
+    <div class="agrid">
+      ${m.agents.map(a=>`
+      <div class="agent">
+        <h3>${esc(a.agentName)}</h3>
+        <div class="mods">${a.models.map(x=>`<span class="tag anthropic">${esc(x)}</span>`).join(' ')}</div>
+        <div class="mrow"><span>Corridas</span><b>${nf(a.runs)}</b></div>
+        <div class="mrow"><span>Tokens (in / out)</span><b>${tok(a.inputTokens)} / ${tok(a.outputTokens)}</b></div>
+        <div class="mrow"><span>Costo</span><b style="color:var(--red)">${usd(a.costUsd)}</b></div>
+        <div class="mrow"><span>Costo por corrida</span><b>${usd(a.runs?a.costUsd/a.runs:0)}</b></div>
+        <div class="mrow"><span>Latencia media</span><b>${a.avgLatencyMs!=null?(a.avgLatencyMs/1000).toFixed(1)+'s':'—'}</b></div>
+        <div class="mrow"><span>Confianza media</span><b style="color:var(--green)">${a.avgConfidence!=null?(a.avgConfidence*100).toFixed(0)+'%':'—'}</b></div>
+        <div class="mrow"><span>Revisión humana</span><b>${a.humanReviewPct!=null?a.humanReviewPct+'%':'—'}</b></div>
+      </div>`).join('')||'<p class="empty">Sin corridas de agente aún.</p>'}
+    </div>
+    <h2 class="sec">Comparativa de LLMs</h2>
+    <div class="card">
+      <table>
+        <tr><th>Proveedor</th><th>Modelo</th><th class="num">Corridas</th><th class="num">Tokens in</th><th class="num">Tokens out</th><th class="num">Costo USD</th><th class="num">$/corrida</th><th class="num">Latencia</th><th class="num">Confianza</th><th style="width:16%">Peso en costo</th></tr>
+        ${m.models.map(x=>`<tr>
+          <td><span class="tag ${esc(x.provider)}">${esc(x.provider)}</span></td>
+          <td>${esc(x.modelName)}</td>
+          <td class="num">${nf(x.runs)}</td>
+          <td class="num">${tok(x.inputTokens)}</td>
+          <td class="num">${tok(x.outputTokens)}</td>
+          <td class="num" style="color:var(--red)">${usd(x.costUsd)}</td>
+          <td class="num">${usd(x.runs?x.costUsd/x.runs:0)}</td>
+          <td class="num">${x.avgLatencyMs!=null?(x.avgLatencyMs/1000).toFixed(1)+'s':'—'}</td>
+          <td class="num" style="color:var(--green)">${x.avgConfidence!=null?(x.avgConfidence*100).toFixed(0)+'%':'—'}</td>
+          <td><div class="bar"><i style="width:${Math.round(x.costUsd/totalCost*100)}%"></i></div></td>
+        </tr>`).join('')||'<tr><td colspan="10" style="color:var(--muted)">Sin datos</td></tr>'}
+      </table>
+      <p style="font-size:.7rem;color:#64748b;margin:10px 0 0">Precios de lista por 1M tokens. Los agentes nuevos (cierre, llamadas, seguimiento) aparecerán aquí automáticamente al registrar sus AgentRun.</p>
+    </div>
+    <h2 class="sec">Costo diario</h2>
+    <div class="card">${chart(m.ai.days.map(d=>({...d,runs:d.costUsd})) )}</div>`;
 }
 
 function renderBoard(leads){
-  const el=document.getElementById('board');
-  el.innerHTML=STAGES.map(([k,l,c])=>{
+  document.getElementById('board').innerHTML=STAGES.map(([k,l,c])=>{
     const ls=leads.filter(x=>x.status===k);
-    return `<div class="col" style="border-top-color:${c}" data-st="${k}"
-      ondragover="event.preventDefault();this.classList.add('drag')"
-      ondragleave="this.classList.remove('drag')"
-      ondrop="drop(event,'${k}')">
+    return `<div class="col" style="--cc:${c}" data-st="${k}"
+      ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="drop(event,'${k}')">
       <h3>${l}<span>${ls.length}</span></h3>
-      ${ls.map(x=>`<div class="lead" draggable="true" ondragstart="event.dataTransfer.setData('id','${x.id}')" style="border-left-color:${c}">
+      ${ls.map(x=>`<div class="lead" draggable="true" ondragstart="event.dataTransfer.setData('id','${x.id}')">
         <div class="nm">${esc(x.contact?.fullName||'Sin nombre')}</div>
-        <div class="dt">${esc(x.destination||'Destino por definir')}${x.paxAdults?' · '+x.paxAdults+' adt'+(x.paxChildren?' + '+x.paxChildren+' chd':''):''}</div>
+        <div class="dt">${esc(x.destination||'Destino por definir')}${x.paxAdults?' · '+x.paxAdults+' adt'+(x.paxChildren?' +'+x.paxChildren+' chd':''):''}</div>
         <div class="dt">${INTENTS[x.intent]||x.intent} · ${fmt(x.updatedAt)}</div>
         <div class="row">
           ${x.score!=null?`<span class="score ${x.score>=0.7?'':x.score>=0.4?'mid':'low'}">${(x.score*100).toFixed(0)}%</span>`:'<span></span>'}
-          <span class="money">${money(x.budgetAmount,x.budgetCurrency)}</span>
+          <span class="money">${x.budgetAmount?nf(x.budgetAmount)+' '+(x.budgetCurrency||''):''}</span>
         </div>
       </div>`).join('')}
     </div>`;}).join('');
 }
-
 async function drop(ev,status){
-  ev.preventDefault();
-  ev.currentTarget.classList.remove('drag');
-  const id=ev.dataTransfer.getData('id');
-  if(!id)return;
-  try{
-    await j('/crm/leads/'+id+'/status',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({status,updatedBy:localStorage.getItem('who')||'consola'})});
-    refresh();
-  }catch(e){alert('No se pudo mover: '+e.message);}
+  ev.preventDefault();ev.currentTarget.classList.remove('drag');
+  const id=ev.dataTransfer.getData('id'); if(!id)return;
+  try{await j('/crm/leads/'+id+'/status',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({status,updatedBy:localStorage.getItem('who')||'consola'})});refresh();}
+  catch(e){alert('No se pudo mover: '+e.message);}
 }
 
 function renderApprovals(rows){
   const who=localStorage.getItem('who')||'';
   document.getElementById('aprlist').innerHTML=rows.length?rows.map(r=>`
     <div class="apr" id="apr-${r.id}">
-      <div class="meta"><b>${esc(r.conversation?.contact?.fullName||'Sin nombre')}</b> · ${r.conversation?.channel} · ${fmt(r.createdAt)}</div>
+      <div class="meta"><b style="color:var(--cyan)">${esc(r.conversation?.contact?.fullName||'Sin nombre')}</b> · ${r.conversation?.channel} · ${fmt(r.createdAt)}</div>
       <textarea id="tx-${r.id}">${esc(r.body)}</textarea>
       <div class="acts">
         <input id="wh-${r.id}" placeholder="tu nombre" value="${esc(who)}"/>
@@ -210,39 +288,33 @@ function renderApprovals(rows){
         <button class="btn red" onclick="act('${r.id}','reject')">Rechazar</button>
       </div>
     </div>`).join('')
-  :'<p class="empty">Nada pendiente. Los mensajes entrantes aparecerán aquí tras pasar por el agente.</p>';
+  :'<p class="empty">Nada pendiente. Autonomía L0: cada respuesta del agente espera aquí tu visto bueno.</p>';
 }
-
 async function act(id,action){
   const who=document.getElementById('wh-'+id).value.trim();
   if(!who){alert('Escribe tu nombre para la auditoría');return;}
   localStorage.setItem('who',who);
   const payload={approvedBy:who};
   if(action==='approve')payload.editedBody=document.getElementById('tx-'+id).value;
-  try{
-    await j('/approvals/'+id+'/'+action,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
-    document.getElementById('apr-'+id).remove();
-    refresh();
-  }catch(e){alert('Error: '+e.message);}
+  try{await j('/approvals/'+id+'/'+action,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+    document.getElementById('apr-'+id).remove();refresh();}
+  catch(e){alert('Error: '+e.message);}
 }
 
 function renderConvs(rows){
   document.getElementById('convlist').innerHTML=rows.length?rows.map(c=>`
     <div class="conv" id="conv-${c.id}" onclick="openConv('${c.id}')">
-      <div class="cn">${esc(c.contact?.fullName||'Sin nombre')} <small style="color:#7a8794">· ${c.channel}</small></div>
+      <div class="cn">${esc(c.contact?.fullName||'Sin nombre')} <small style="color:#64748b">· ${c.channel}</small></div>
       <div class="cp">${esc(c.messages?.[0]?.body||'')}</div>
       <div class="ct">${c._count?.messages??''} mensajes · ${fmt(c.updatedAt)}</div>
-    </div>`).join('')
-  :'<p class="empty">Sin conversaciones aún.</p>';
+    </div>`).join(''):'<p class="empty">Sin conversaciones.</p>';
 }
-
 async function openConv(id){
   document.querySelectorAll('.conv').forEach(x=>x.classList.remove('sel'));
   document.getElementById('conv-'+id)?.classList.add('sel');
   const c=await j('/crm/conversations/'+id);
   document.getElementById('thread').innerHTML=(c.messages||[]).map(m=>`
-    <div class="msg ${m.direction==='INBOUND'?'in':'out'}">${esc(m.body)}<div class="mt">${m.direction==='INBOUND'?esc(c.contact?.fullName||'Cliente'):'CTM'} · ${fmt(m.createdAt)}</div></div>`).join('')
-    ||'<p class="empty">Sin mensajes</p>';
+    <div class="msg ${m.direction==='INBOUND'?'in':'out'}">${esc(m.body)}<div class="mt">${m.direction==='INBOUND'?esc(c.contact?.fullName||'Cliente'):'CTM'} · ${fmt(m.createdAt)}</div></div>`).join('')||'<p class="empty">Sin mensajes</p>';
 }
 
 show('panel');
