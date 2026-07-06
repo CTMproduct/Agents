@@ -4,6 +4,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 export interface ToolContext {
   contactId?: string;
   leadId?: string | null;
+  /** Presente cuando corre un agente del marketplace: aisla su knowledge base. */
+  tenantAgentId?: string;
   traceId: string;
 }
 
@@ -41,6 +43,7 @@ export class ToolRegistry {
   constructor(private readonly prisma: PrismaService) {
     this.register(this.buildKnowledgeSearchTool());
     this.register(this.buildCrmLookupTool());
+    this.register(this.buildAgentKnowledgeTool());
     this.registerServerTool({
       key: 'web_search',
       anthropicType: 'web_search_20260209',
@@ -113,6 +116,52 @@ export class ToolRegistry {
         return docs.length
           ? { found: true, documents: docs }
           : { found: false, message: `Sin documentos vigentes para "${market}". No cotizar.` };
+      },
+    };
+  }
+
+  /**
+   * Knowledge base propia del agente del marketplace: busca SOLO en los
+   * documentos del TenantAgent que esta corriendo (ctx.tenantAgentId).
+   * Es marketplacePublic porque no puede tocar datos de otros tenants.
+   */
+  private buildAgentKnowledgeTool(): AgentTool {
+    return {
+      key: 'agent_knowledge',
+      name: 'agent_knowledge',
+      description:
+        'Busca en la base de conocimiento propia de este agente (documentos que subio la empresa: ' +
+        'catalogos, politicas, precios, FAQs). Usala antes de responder preguntas sobre la empresa.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Palabras clave a buscar en titulo o contenido' },
+        },
+        required: ['query'],
+      },
+      marketplacePublic: true,
+      execute: async (input, ctx) => {
+        if (!ctx.tenantAgentId) return { found: false, message: 'Este agente no tiene knowledge base.' };
+        const query = String(input.query ?? '').trim();
+        const docs = await this.prisma.tenantAgentKnowledge.findMany({
+          where: {
+            tenantAgentId: ctx.tenantAgentId,
+            active: true,
+            ...(query
+              ? {
+                  OR: [
+                    { title: { contains: query, mode: 'insensitive' } },
+                    { content: { contains: query, mode: 'insensitive' } },
+                  ],
+                }
+              : {}),
+          },
+          take: 3,
+          select: { title: true, content: true },
+        });
+        return docs.length
+          ? { found: true, documents: docs.map((d) => ({ title: d.title, content: d.content.slice(0, 4000) })) }
+          : { found: false, message: `Sin documentos que coincidan con "${query}".` };
       },
     };
   }

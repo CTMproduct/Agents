@@ -304,10 +304,12 @@ async function doCreateCustom(){
 }
 
 // ---------- Mis Agentes ----------
+let MODELS=[];
 async function loadMyAgents(){
   const list=document.getElementById('myAgentsList');
   if(!TOKEN){ list.innerHTML='<p class="empty">Inicia sesión para ver tus agentes.</p>'; return; }
   if(!TOOLS.length) TOOLS=await api('/marketplace/tools');
+  if(!MODELS.length) MODELS=await api('/marketplace/models');
   const agents=await api('/marketplace/my-agents');
   if(!agents.length){ list.innerHTML='<p class="empty">Aún no has activado ningún agente. Ve al Catálogo y prueba uno gratis.</p>'; return; }
   list.innerHTML=agents.map(a=>`
@@ -316,12 +318,51 @@ async function loadMyAgents(){
         <h3>${esc(a.name)}</h3>
         <span class="badge ${a.active?'':'off'}">${a.active?'Activo':'Inactivo'}</span>
         ${a.template?`<span class="badge">plantilla: ${esc(a.template.name)}</span>`:'<span class="badge">personalizado</span>'}
+        <span class="badge">${esc(a.modelName||'modelo por defecto')}</span>
       </div>
-      <label style="font-size:.75rem;color:var(--muted)">Skill (markdown)</label>
+
+      <label style="font-size:.75rem;color:var(--muted)">Modelo LLM conectado</label>
+      <select id="model-${a.id}" style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(148,163,184,.2);background:#0a0e0b;color:var(--ink);font:inherit;font-size:.85rem;margin-bottom:10px">
+        <option value="" ${!a.modelName?'selected':''}>Modelo por defecto de la plataforma</option>
+        ${MODELS.map(m=>`<option value="${esc(m.model)}" ${a.modelName===m.model?'selected':''}>${esc(m.label)} (${esc(m.priceLabel)})</option>`).join('')}
+      </select>
+
+      <label style="font-size:.75rem;color:var(--muted)">Skill principal (markdown)</label>
       <textarea id="skill-${a.id}">${esc(a.skillMd)}</textarea>
-      <label style="font-size:.75rem;color:var(--muted);display:block;margin-top:10px">Conectores</label>
+
+      <label style="font-size:.75rem;color:var(--muted);display:block;margin-top:10px">Skills adicionales (.md) — se agregan al prompt en orden</label>
+      <div id="skills-${a.id}">
+        ${(a.skills||[]).map(s=>`
+        <div class="test-box" style="margin-top:8px" id="skillrow-${s.id}">
+          <div style="display:flex;align-items:center;gap:10px">
+            <input value="${esc(s.name)}" id="skillname-${s.id}" style="flex:1;padding:7px 10px;border-radius:8px;border:1px solid rgba(148,163,184,.2);background:#0a0e0b;color:var(--ink);font-size:.8rem"/>
+            <span class="badge ${s.active?'':'off'}" style="cursor:pointer" onclick="toggleSkill('${a.id}','${s.id}',${!s.active})">${s.active?'activo':'inactivo'}</span>
+            <button class="btn danger small" onclick="deleteSkill('${a.id}','${s.id}')">✕</button>
+          </div>
+          <textarea id="skillmd-${s.id}" style="margin-top:8px">${esc(s.contentMd)}</textarea>
+          <div class="row-actions"><button class="btn ghost small" onclick="saveSkill('${a.id}','${s.id}')">Guardar skill</button></div>
+        </div>`).join('')}
+      </div>
+      <div class="row-actions"><button class="btn ghost small" onclick="addSkill('${a.id}')">+ Agregar skill .md</button></div>
+
+      <label style="font-size:.75rem;color:var(--muted);display:block;margin-top:14px">Knowledge del agente — documentos que consulta al responder</label>
+      <div id="knowledge-${a.id}">
+        ${(a.knowledge||[]).map(k=>`
+        <div class="test-box" style="margin-top:8px" id="krow-${k.id}">
+          <div style="display:flex;align-items:center;gap:10px">
+            <input value="${esc(k.title)}" id="ktitle-${k.id}" style="flex:1;padding:7px 10px;border-radius:8px;border:1px solid rgba(148,163,184,.2);background:#0a0e0b;color:var(--ink);font-size:.8rem"/>
+            <span class="badge ${k.active?'':'off'}" style="cursor:pointer" onclick="toggleKnowledge('${a.id}','${k.id}',${!k.active})">${k.active?'activo':'inactivo'}</span>
+            <button class="btn danger small" onclick="deleteKnowledge('${a.id}','${k.id}')">✕</button>
+          </div>
+          <textarea id="kcontent-${k.id}" style="margin-top:8px">${esc(k.content)}</textarea>
+          <div class="row-actions"><button class="btn ghost small" onclick="saveKnowledge('${a.id}','${k.id}')">Guardar documento</button></div>
+        </div>`).join('')||'<p style="color:var(--muted);font-size:.78rem;margin:6px 0 0">Sin documentos. Agrega catálogos, precios, políticas o FAQs: el agente los consultará automáticamente.</p>'}
+      </div>
+      <div class="row-actions"><button class="btn ghost small" onclick="addKnowledge('${a.id}')">+ Agregar documento</button></div>
+
+      <label style="font-size:.75rem;color:var(--muted);display:block;margin-top:14px">Conectores</label>
       <div class="tool-grid" id="tools-${a.id}">
-        ${TOOLS.map(t=>`<span class="tool-pill ${a.toolKeys.includes(t.key)?'on':''}" data-key="${esc(t.key)}" onclick="this.classList.toggle('on')">${esc(t.name)}</span>`).join('')||'<span style="color:var(--muted);font-size:.8rem">Sin conectores públicos disponibles.</span>'}
+        ${TOOLS.map(t=>`<span class="tool-pill ${a.toolKeys.includes(t.key)?'on':''}" data-key="${esc(t.key)}" onclick="this.classList.toggle('on')" title="${esc(t.description)}">${esc(t.name)}</span>`).join('')||'<span style="color:var(--muted);font-size:.8rem">Sin conectores públicos disponibles.</span>'}
       </div>
       <div class="row-actions">
         <button class="btn small" onclick="saveAgent('${a.id}')">Guardar cambios</button>
@@ -340,10 +381,68 @@ async function loadMyAgents(){
 async function saveAgent(id){
   const skillMd=document.getElementById('skill-'+id).value;
   const toolKeys=[...document.querySelectorAll('#tools-'+id+' .tool-pill.on')].map(p=>p.dataset.key);
+  const modelName=document.getElementById('model-'+id).value||null;
   try{
-    await api('/marketplace/my-agents/'+id, {method:'PATCH', body:JSON.stringify({skillMd, toolKeys})});
+    await api('/marketplace/my-agents/'+id, {method:'PATCH', body:JSON.stringify({skillMd, toolKeys, modelName})});
     alert('Guardado.');
+    loadMyAgents();
   }catch(e){ alert('Error: '+e.message); }
+}
+
+// ---------- Skills adicionales ----------
+async function addSkill(agentId){
+  const name=prompt('Nombre del skill (ej. tono-de-marca.md):');
+  if(!name) return;
+  try{
+    await api('/marketplace/my-agents/'+agentId+'/skills',{method:'POST',body:JSON.stringify({name,contentMd:'# '+name+'\n\n(escribe aquí las instrucciones)'})});
+    loadMyAgents();
+  }catch(e){ alert('Error: '+e.message); }
+}
+async function saveSkill(agentId, skillId){
+  try{
+    await api('/marketplace/my-agents/'+agentId+'/skills/'+skillId,{method:'PATCH',body:JSON.stringify({
+      name:document.getElementById('skillname-'+skillId).value,
+      contentMd:document.getElementById('skillmd-'+skillId).value,
+    })});
+    alert('Skill guardado.');
+  }catch(e){ alert('Error: '+e.message); }
+}
+async function toggleSkill(agentId, skillId, active){
+  try{ await api('/marketplace/my-agents/'+agentId+'/skills/'+skillId,{method:'PATCH',body:JSON.stringify({active})}); loadMyAgents(); }
+  catch(e){ alert('Error: '+e.message); }
+}
+async function deleteSkill(agentId, skillId){
+  if(!confirm('¿Eliminar este skill?')) return;
+  try{ await api('/marketplace/my-agents/'+agentId+'/skills/'+skillId,{method:'DELETE'}); loadMyAgents(); }
+  catch(e){ alert('Error: '+e.message); }
+}
+
+// ---------- Knowledge ----------
+async function addKnowledge(agentId){
+  const title=prompt('Título del documento (ej. Catálogo de precios 2026):');
+  if(!title) return;
+  try{
+    await api('/marketplace/my-agents/'+agentId+'/knowledge',{method:'POST',body:JSON.stringify({title,content:'(pega aquí el contenido del documento)'})});
+    loadMyAgents();
+  }catch(e){ alert('Error: '+e.message); }
+}
+async function saveKnowledge(agentId, docId){
+  try{
+    await api('/marketplace/my-agents/'+agentId+'/knowledge/'+docId,{method:'PATCH',body:JSON.stringify({
+      title:document.getElementById('ktitle-'+docId).value,
+      content:document.getElementById('kcontent-'+docId).value,
+    })});
+    alert('Documento guardado.');
+  }catch(e){ alert('Error: '+e.message); }
+}
+async function toggleKnowledge(agentId, docId, active){
+  try{ await api('/marketplace/my-agents/'+agentId+'/knowledge/'+docId,{method:'PATCH',body:JSON.stringify({active})}); loadMyAgents(); }
+  catch(e){ alert('Error: '+e.message); }
+}
+async function deleteKnowledge(agentId, docId){
+  if(!confirm('¿Eliminar este documento?')) return;
+  try{ await api('/marketplace/my-agents/'+agentId+'/knowledge/'+docId,{method:'DELETE'}); loadMyAgents(); }
+  catch(e){ alert('Error: '+e.message); }
 }
 async function toggleActive(id, active){
   try{ await api('/marketplace/my-agents/'+id,{method:'PATCH',body:JSON.stringify({active})}); loadMyAgents(); }

@@ -265,6 +265,7 @@ model AgentDefinition {
   role         String // descripcion corta del rol comercial
   systemPrompt String
   toolKeys     String[] // ej. ["knowledge_search", "crm_lookup", "web_search"]
+  modelName    String? // LLM propio del agente (null = modelo por defecto de la plataforma)
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -332,13 +333,48 @@ model TenantAgent {
   template   AgentTemplate? @relation(fields: [templateId], references: [id])
   templateId String?
   name       String
-  skillMd    String // el "skill" del agente: system prompt en markdown, editable
+  skillMd    String // el skill principal del agente: system prompt en markdown, editable
   toolKeys   String[]
+  modelName  String? // LLM propio del agente (null = modelo por defecto de la plataforma)
   active     Boolean        @default(true)
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
 
+  skills    TenantAgentSkill[]
+  knowledge TenantAgentKnowledge[]
+
   @@index([tenantId])
+}
+
+// Skills adicionales (.md) del agente: se componen en orden despues del skill
+// principal para formar el system prompt final. Editable por el tenant.
+model TenantAgentSkill {
+  id            String      @id @default(cuid())
+  tenantAgent   TenantAgent @relation(fields: [tenantAgentId], references: [id], onDelete: Cascade)
+  tenantAgentId String
+  name          String // ej. "tono-de-marca.md", "politica-de-descuentos.md"
+  contentMd     String
+  position      Int         @default(0)
+  active        Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([tenantAgentId, position])
+}
+
+// Knowledge base propia del agente: documentos que consulta en runtime via la
+// herramienta agent_knowledge (aislada por agente -- nunca cruza tenants).
+model TenantAgentKnowledge {
+  id            String      @id @default(cuid())
+  tenantAgent   TenantAgent @relation(fields: [tenantAgentId], references: [id], onDelete: Cascade)
+  tenantAgentId String
+  title         String
+  content       String
+  active        Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([tenantAgentId])
 }
 
 // Calificacion de una empresa (tenant) sobre una plantilla del catalogo.

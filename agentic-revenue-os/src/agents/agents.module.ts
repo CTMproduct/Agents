@@ -6,6 +6,6 @@ import { ToolRegistry } from './tools/tool-registry';
 
 @Module({
   providers: [LlmProvider, IntakeAgentService, AgentRunnerService, ToolRegistry],
-  exports: [IntakeAgentService, AgentRunnerService, ToolRegistry],
+  exports: [IntakeAgentService, AgentRunnerService, ToolRegistry, LlmProvider],
 })
 export class AgentsModule {}

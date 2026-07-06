@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   ForbiddenException,
   Get,
   Param,
@@ -16,6 +17,8 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtPayload } from '../auth/auth.service';
 import { AgentRunnerService } from '../agents/agent-runner.service';
 import { ToolRegistry } from '../agents/tools/tool-registry';
+import { LlmProvider } from '../agents/llm.provider';
+import { MODEL_CATALOG } from '../crm/llm-pricing';
 
 /**
  * Marketplace de agentes: catalogo publico + agentes activados por cada tenant.
@@ -28,7 +31,16 @@ export class MarketplaceController {
     private readonly prisma: PrismaService,
     private readonly agentRunner: AgentRunnerService,
     private readonly tools: ToolRegistry,
+    private readonly llm: LlmProvider,
   ) {}
+
+  /** Devuelve el TenantAgent solo si pertenece al tenant del usuario; si no, 400. */
+  private async ownAgent(id: string, user: JwtPayload) {
+    if (!user.tenantId) throw new ForbiddenException('Tu cuenta no pertenece a ninguna empresa');
+    const agent = await this.prisma.tenantAgent.findFirst({ where: { id, tenantId: user.tenantId } });
+    if (!agent) throw new BadRequestException('Agente no encontrado en tu empresa');
+    return agent;
+  }
 
   /** Catalogo publico: no requiere login, para que se pueda navegar antes de registrarse. */
   @Get('templates')
@@ -62,6 +74,16 @@ export class MarketplaceController {
   @Get('tools')
   listPublicTools() {
     return this.tools.listMarketplacePublic();
+  }
+
+  /** LLMs a los que un agente puede conectarse (solo proveedores con key configurada). */
+  @Get('models')
+  listModels() {
+    const available = this.llm.availableProviders;
+    return MODEL_CATALOG.filter((m) => available.includes(m.provider)).map((m) => ({
+      ...m,
+      priceLabel: `$${m.inPerM}/M in · $${m.outPerM}/M out`,
+    }));
   }
 
   /** "Probar Gratis": crea una copia editable de la plantilla para el tenant del usuario. */
@@ -108,32 +130,142 @@ export class MarketplaceController {
     if (!user.tenantId) return [];
     return this.prisma.tenantAgent.findMany({
       where: { tenantId: user.tenantId },
-      include: { template: { select: { name: true, key: true } } },
+      include: {
+        template: { select: { name: true, key: true } },
+        skills: { orderBy: { position: 'asc' } },
+        knowledge: { orderBy: { createdAt: 'asc' } },
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  /** Editar el skill.md y/o los conectores de un agente propio. Muy facil de configurar. */
+  /** Editar nombre, skill principal, conectores, LLM y estado de un agente propio. */
   @Patch('my-agents/:id')
   @UseGuards(AuthGuard)
   async updateAgent(
     @Param('id') id: string,
     @CurrentUser() user: JwtPayload,
-    @Body() body: { name?: string; skillMd?: string; toolKeys?: string[]; active?: boolean },
+    @Body() body: { name?: string; skillMd?: string; toolKeys?: string[]; modelName?: string | null; active?: boolean },
   ) {
-    if (!user.tenantId) throw new ForbiddenException('Tu cuenta no pertenece a ninguna empresa');
-    const agent = await this.prisma.tenantAgent.findFirst({ where: { id, tenantId: user.tenantId } });
-    if (!agent) throw new BadRequestException('Agente no encontrado en tu empresa');
+    const agent = await this.ownAgent(id, user);
+
+    let modelName: string | null | undefined = undefined;
+    if (body.modelName !== undefined) {
+      if (body.modelName === null || body.modelName === '') {
+        modelName = null; // volver al modelo por defecto de la plataforma
+      } else {
+        const available = this.llm.availableProviders;
+        const valid = MODEL_CATALOG.some((m) => m.model === body.modelName && available.includes(m.provider));
+        if (!valid) throw new BadRequestException(`Modelo no disponible: ${body.modelName}`);
+        modelName = body.modelName;
+      }
+    }
 
     return this.prisma.tenantAgent.update({
-      where: { id },
+      where: { id: agent.id },
       data: {
         name: body.name ?? undefined,
         skillMd: body.skillMd ?? undefined,
         toolKeys: body.toolKeys ? this.tools.filterMarketplacePublic(body.toolKeys) : undefined,
+        modelName,
         active: body.active ?? undefined,
       },
     });
+  }
+
+  // ---------- Skills (.md) adicionales del agente ----------
+
+  @Post('my-agents/:id/skills')
+  @UseGuards(AuthGuard)
+  async addSkill(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+    @Body() body: { name: string; contentMd: string },
+  ) {
+    const agent = await this.ownAgent(id, user);
+    if (!body?.name || !body?.contentMd) throw new BadRequestException('name y contentMd son obligatorios');
+    const last = await this.prisma.tenantAgentSkill.findFirst({
+      where: { tenantAgentId: agent.id },
+      orderBy: { position: 'desc' },
+    });
+    return this.prisma.tenantAgentSkill.create({
+      data: { tenantAgentId: agent.id, name: body.name, contentMd: body.contentMd, position: (last?.position ?? -1) + 1 },
+    });
+  }
+
+  @Patch('my-agents/:id/skills/:skillId')
+  @UseGuards(AuthGuard)
+  async updateSkill(
+    @Param('id') id: string,
+    @Param('skillId') skillId: string,
+    @CurrentUser() user: JwtPayload,
+    @Body() body: { name?: string; contentMd?: string; active?: boolean; position?: number },
+  ) {
+    const agent = await this.ownAgent(id, user);
+    const skill = await this.prisma.tenantAgentSkill.findFirst({ where: { id: skillId, tenantAgentId: agent.id } });
+    if (!skill) throw new BadRequestException('Skill no encontrado en este agente');
+    return this.prisma.tenantAgentSkill.update({
+      where: { id: skill.id },
+      data: {
+        name: body.name ?? undefined,
+        contentMd: body.contentMd ?? undefined,
+        active: body.active ?? undefined,
+        position: body.position ?? undefined,
+      },
+    });
+  }
+
+  @Delete('my-agents/:id/skills/:skillId')
+  @UseGuards(AuthGuard)
+  async deleteSkill(@Param('id') id: string, @Param('skillId') skillId: string, @CurrentUser() user: JwtPayload) {
+    const agent = await this.ownAgent(id, user);
+    const skill = await this.prisma.tenantAgentSkill.findFirst({ where: { id: skillId, tenantAgentId: agent.id } });
+    if (!skill) throw new BadRequestException('Skill no encontrado en este agente');
+    await this.prisma.tenantAgentSkill.delete({ where: { id: skill.id } });
+    return { ok: true };
+  }
+
+  // ---------- Knowledge base del agente ----------
+
+  @Post('my-agents/:id/knowledge')
+  @UseGuards(AuthGuard)
+  async addKnowledge(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+    @Body() body: { title: string; content: string },
+  ) {
+    const agent = await this.ownAgent(id, user);
+    if (!body?.title || !body?.content) throw new BadRequestException('title y content son obligatorios');
+    return this.prisma.tenantAgentKnowledge.create({
+      data: { tenantAgentId: agent.id, title: body.title, content: body.content },
+    });
+  }
+
+  @Patch('my-agents/:id/knowledge/:docId')
+  @UseGuards(AuthGuard)
+  async updateKnowledge(
+    @Param('id') id: string,
+    @Param('docId') docId: string,
+    @CurrentUser() user: JwtPayload,
+    @Body() body: { title?: string; content?: string; active?: boolean },
+  ) {
+    const agent = await this.ownAgent(id, user);
+    const doc = await this.prisma.tenantAgentKnowledge.findFirst({ where: { id: docId, tenantAgentId: agent.id } });
+    if (!doc) throw new BadRequestException('Documento no encontrado en este agente');
+    return this.prisma.tenantAgentKnowledge.update({
+      where: { id: doc.id },
+      data: { title: body.title ?? undefined, content: body.content ?? undefined, active: body.active ?? undefined },
+    });
+  }
+
+  @Delete('my-agents/:id/knowledge/:docId')
+  @UseGuards(AuthGuard)
+  async deleteKnowledge(@Param('id') id: string, @Param('docId') docId: string, @CurrentUser() user: JwtPayload) {
+    const agent = await this.ownAgent(id, user);
+    const doc = await this.prisma.tenantAgentKnowledge.findFirst({ where: { id: docId, tenantAgentId: agent.id } });
+    if (!doc) throw new BadRequestException('Documento no encontrado en este agente');
+    await this.prisma.tenantAgentKnowledge.delete({ where: { id: doc.id } });
+    return { ok: true };
   }
 
   /** Prueba rapida del agente contra un texto de ejemplo (sin webhook real). */

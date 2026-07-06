@@ -25,6 +25,8 @@ interface ExecuteAgenticParams {
   conversationText: string;
   ctx: ToolContext;
   tenantId?: string | null;
+  /** LLM propio del agente; null = default de la plataforma. */
+  modelName?: string | null;
   auditPayload: Record<string, unknown>;
 }
 
@@ -60,30 +62,53 @@ export class AgentRunnerService {
       toolKeys: definition.toolKeys,
       conversationText: input.conversationText,
       ctx: { contactId: input.contactId, leadId: input.leadId, traceId: input.traceId },
+      modelName: definition.modelName,
       auditPayload: { definitionKey },
     });
   }
 
-  /** Agente de un tenant del marketplace (TenantAgent). Solo usa conectores marketplacePublic. */
+  /**
+   * Agente de un tenant del marketplace (TenantAgent). Solo usa conectores
+   * marketplacePublic. El system prompt final se compone del skill principal
+   * + los skills .md adicionales activos (en orden). Si el agente tiene
+   * documentos de knowledge, la herramienta agent_knowledge se habilita sola.
+   */
   async runTenantAgent(
     tenantAgentId: string,
     tenantId: string,
     input: { conversationText: string; traceId: string },
   ): Promise<AgentRunnerResult | null> {
-    const agent = await this.prisma.tenantAgent.findFirst({ where: { id: tenantAgentId, tenantId } });
+    const agent = await this.prisma.tenantAgent.findFirst({
+      where: { id: tenantAgentId, tenantId },
+      include: {
+        skills: { where: { active: true }, orderBy: { position: 'asc' } },
+        _count: { select: { knowledge: { where: { active: true } } } },
+      },
+    });
     if (!agent || !agent.active) {
       this.logger.warn(`TenantAgent '${tenantAgentId}' no existe, no es de este tenant, o esta inactivo`);
       return null;
     }
+
+    const composedPrompt = [
+      agent.skillMd,
+      ...agent.skills.map((s) => `\n\n<!-- skill: ${s.name} -->\n${s.contentMd}`),
+    ].join('');
+
     const safeToolKeys = this.tools.filterMarketplacePublic(agent.toolKeys);
+    if (agent._count.knowledge > 0 && !safeToolKeys.includes('agent_knowledge')) {
+      safeToolKeys.push('agent_knowledge');
+    }
+
     return this.executeAgentic({
       agentName: `[${tenantId.slice(0, 8)}] ${agent.name}`,
-      systemPrompt: agent.skillMd,
+      systemPrompt: composedPrompt,
       toolKeys: safeToolKeys,
       conversationText: input.conversationText,
-      ctx: { traceId: input.traceId },
+      ctx: { traceId: input.traceId, tenantAgentId },
       tenantId,
-      auditPayload: { tenantAgentId },
+      modelName: agent.modelName,
+      auditPayload: { tenantAgentId, skillCount: agent.skills.length, knowledgeDocs: agent._count.knowledge },
     });
   }
 
@@ -94,6 +119,7 @@ export class AgentRunnerService {
     const resp = await this.llm.runAgentic({
       system: p.systemPrompt,
       user: `Conversacion (el ultimo mensaje es el mas reciente):\n\n${p.conversationText}`,
+      model: p.modelName,
       tools: clientTools.map((t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema })),
       serverTools: serverTools.map((t) => ({ anthropicType: t.anthropicType, anthropicName: t.anthropicName })),
       executeTool: async (name, toolInput) => {

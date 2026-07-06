@@ -15,17 +15,30 @@ import * as bcrypt from 'bcryptjs';
 
 class LlmProviderStub {
   readonly providerName = 'stub';
+  readonly availableProviders: Array<'anthropic' | 'openai'> = ['anthropic', 'openai'];
+  /** Captura la ultima peticion agentica para poder asertar prompt/modelo/herramientas. */
+  lastRequest: AgenticRequest | null = null;
+
   async generateStructured(): Promise<LlmStructuredResponse> {
     throw new Error('no usado en este e2e');
   }
   async runAgentic(req: AgenticRequest): Promise<AgenticResponse> {
+    this.lastRequest = req;
+    // Si el agente trae la herramienta agent_knowledge, la ejercita de verdad
+    // (contra Postgres) para probar el aislamiento por tenantAgentId.
+    const knowledgeTool = req.tools.find((t) => t.name === 'agent_knowledge');
+    const toolCalls = [];
+    if (knowledgeTool) {
+      const output = await req.executeTool('agent_knowledge', { query: 'precios' });
+      toolCalls.push({ name: 'agent_knowledge', input: { query: 'precios' }, output });
+    }
     return {
       text: 'Hola, gracias por escribirnos. Un asesor te contactara pronto.',
-      modelName: 'stub-agentic-model',
+      modelName: req.model ?? 'stub-agentic-model',
       inputTokens: 50,
       outputTokens: 30,
       latencyMs: 3,
-      toolCalls: [],
+      toolCalls,
     };
   }
 }
@@ -33,11 +46,12 @@ class LlmProviderStub {
 describe('Marketplace multi-tenant (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  const llmStub = new LlmProviderStub();
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(LlmProvider)
-      .useValue(new LlmProviderStub())
+      .useValue(llmStub)
       .compile();
     app = moduleRef.createNestApplication();
     await app.init();
@@ -159,6 +173,75 @@ describe('Marketplace multi-tenant (e2e)', () => {
       .set('Authorization', `Bearer ${regB.body.token}`)
       .expect(200);
     expect(bAgents.body).toHaveLength(0);
+  });
+
+  it('configuracion por agente: LLM propio, skills .md compuestos y knowledge aislado', async () => {
+    const reg = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({ email: `cfg-${randomUUID()}@x.com`, password: 'clave-segura-123', tenantName: `Cfg ${randomUUID().slice(0, 6)}` })
+      .expect(201);
+    const auth = { Authorization: `Bearer ${reg.body.token}` };
+
+    // Catalogo de modelos disponible (stub declara anthropic+openai configurados)
+    const models = await request(app.getHttpServer()).get('/marketplace/models').expect(200);
+    expect(models.body.map((m: { model: string }) => m.model)).toEqual(
+      expect.arrayContaining(['claude-haiku-4-5', 'gpt-4o-mini']),
+    );
+
+    const activated = await request(app.getHttpServer())
+      .post('/marketplace/templates/sdr/activate').set(auth).expect(201);
+    const agentId = activated.body.id;
+
+    // 1. Conectar el agente a un LLM especifico (validado contra el catalogo)
+    await request(app.getHttpServer())
+      .patch(`/marketplace/my-agents/${agentId}`).set(auth)
+      .send({ modelName: 'claude-haiku-4-5' }).expect(200);
+    await request(app.getHttpServer())
+      .patch(`/marketplace/my-agents/${agentId}`).set(auth)
+      .send({ modelName: 'modelo-inventado' }).expect(400);
+
+    // 2. Agregar dos skills .md y desactivar el segundo
+    const s1 = await request(app.getHttpServer())
+      .post(`/marketplace/my-agents/${agentId}/skills`).set(auth)
+      .send({ name: 'tono-de-marca.md', contentMd: 'Habla siempre en tono cordial paisa.' }).expect(201);
+    const s2 = await request(app.getHttpServer())
+      .post(`/marketplace/my-agents/${agentId}/skills`).set(auth)
+      .send({ name: 'borrador.md', contentMd: 'ESTE SKILL ESTA INACTIVO' }).expect(201);
+    await request(app.getHttpServer())
+      .patch(`/marketplace/my-agents/${agentId}/skills/${s2.body.id}`).set(auth)
+      .send({ active: false }).expect(200);
+
+    // 3. Agregar un documento de knowledge
+    await request(app.getHttpServer())
+      .post(`/marketplace/my-agents/${agentId}/knowledge`).set(auth)
+      .send({ title: 'Lista de precios 2026', content: 'Plan basico: consultar con asesor.' }).expect(201);
+
+    // my-agents ahora devuelve skills + knowledge + modelName
+    const mine = await request(app.getHttpServer()).get('/marketplace/my-agents').set(auth).expect(200);
+    const agent = mine.body.find((a: { id: string }) => a.id === agentId);
+    expect(agent.modelName).toBe('claude-haiku-4-5');
+    expect(agent.skills).toHaveLength(2);
+    expect(agent.knowledge).toHaveLength(1);
+
+    // 4. Correr: el prompt compuesto lleva el skill activo (no el inactivo),
+    //    el modelo pedido llega al LLM, y agent_knowledge se habilita solo
+    //    y encuentra SOLO los documentos de este agente.
+    const runRes = await request(app.getHttpServer())
+      .post(`/marketplace/my-agents/${agentId}/run`).set(auth)
+      .send({ conversationText: 'Hola, cuales son sus precios?' }).expect(201);
+
+    const req = llmStub.lastRequest!;
+    expect(req.model).toBe('claude-haiku-4-5');
+    expect(req.system).toContain('tono cordial paisa');
+    expect(req.system).not.toContain('ESTE SKILL ESTA INACTIVO');
+    expect(req.tools.map((t) => t.name)).toContain('agent_knowledge');
+
+    const run = await prisma.agentRun.findUnique({ where: { id: runRes.body.agentRunId } });
+    expect(run?.modelName).toBe('claude-haiku-4-5');
+    const trace = run?.outputJson as { toolCalls: Array<{ name: string; output: { found: boolean; documents?: Array<{ title: string }> } }> };
+    const kCall = trace.toolCalls.find((c) => c.name === 'agent_knowledge');
+    expect(kCall?.output.found).toBe(true);
+    expect(kCall?.output.documents?.[0].title).toBe('Lista de precios 2026');
   });
 
   it('admin de plataforma: ve todos los tenants; un tenant normal no puede', async () => {

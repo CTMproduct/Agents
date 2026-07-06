@@ -40,6 +40,8 @@ export interface AgenticRequest {
   executeTool: (name: string, input: Record<string, unknown>) => Promise<unknown>;
   maxIterations?: number;
   maxTokens?: number;
+  /** LLM especifico del agente (ej. "claude-haiku-4-5", "gpt-4o-mini"). null/undefined = default de la plataforma. */
+  model?: string | null;
 }
 
 export interface AgenticToolCallTrace {
@@ -74,6 +76,27 @@ export class LlmProvider {
     return this.config.get<string>('ANTHROPIC_API_KEY') ? 'anthropic' : 'openai';
   }
 
+  /** Proveedores con key configurada (define que modelos del catalogo estan disponibles). */
+  get availableProviders(): Array<'anthropic' | 'openai'> {
+    const out: Array<'anthropic' | 'openai'> = [];
+    if (this.config.get<string>('ANTHROPIC_API_KEY')) out.push('anthropic');
+    if (this.config.get<string>('OPENAI_API_KEY')) out.push('openai');
+    return out;
+  }
+
+  /**
+   * Resuelve que proveedor atiende un modelo pedido por un agente. Si el modelo
+   * es de un proveedor sin key configurada (o no se pidio ninguno), cae al
+   * proveedor/modelo por defecto de la plataforma en vez de fallar la corrida.
+   */
+  private resolveModel(requested?: string | null): { provider: 'anthropic' | 'openai'; model: string | null } {
+    if (requested) {
+      const provider = requested.startsWith('gpt') ? 'openai' : 'anthropic';
+      if (this.availableProviders.includes(provider)) return { provider, model: requested };
+    }
+    return { provider: this.providerName as 'anthropic' | 'openai', model: null };
+  }
+
   async generateStructured(req: LlmStructuredRequest): Promise<LlmStructuredResponse> {
     if (this.providerName === 'anthropic') return this.viaAnthropic(req);
     return this.viaOpenAi(req);
@@ -81,19 +104,22 @@ export class LlmProvider {
 
   /**
    * Bucle agentico con herramientas (cliente + servidor). Usado por agentes
-   * especializados (ventas/soporte/cierre) que necesitan consultar conectores
-   * antes de responder. Acotado por maxIterations para controlar costo/latencia.
+   * especializados (ventas/soporte/cierre) y agentes de tenants que necesitan
+   * consultar conectores antes de responder. Cada agente puede traer su propio
+   * modelo (req.model); acotado por maxIterations para controlar costo/latencia.
    */
   async runAgentic(req: AgenticRequest): Promise<AgenticResponse> {
-    if (this.providerName === 'anthropic') return this.runAgenticAnthropic(req);
-    return this.runAgenticOpenAi(req);
+    const { provider, model } = this.resolveModel(req.model);
+    const effective = { ...req, model };
+    if (provider === 'anthropic') return this.runAgenticAnthropic(effective);
+    return this.runAgenticOpenAi(effective);
   }
 
   private async runAgenticAnthropic(req: AgenticRequest): Promise<AgenticResponse> {
     if (!this.anthropic) {
       this.anthropic = new Anthropic({ apiKey: this.config.get<string>('ANTHROPIC_API_KEY') });
     }
-    const model = this.config.get<string>('ANTHROPIC_MODEL') ?? 'claude-sonnet-5';
+    const model = req.model ?? this.config.get<string>('ANTHROPIC_MODEL') ?? 'claude-sonnet-5';
     const maxIterations = req.maxIterations ?? 4;
     const toolCalls: AgenticToolCallTrace[] = [];
     const tools: Anthropic.Tool[] = req.tools.map((t) => ({
@@ -101,8 +127,14 @@ export class LlmProvider {
       description: t.description,
       input_schema: t.inputSchema as Anthropic.Tool.InputSchema,
     }));
+    // web_search_20260209 (filtrado dinamico) solo existe en Sonnet 5 / Sonnet 4.6 /
+    // Opus 4.6+ / Fable; en modelos menores (ej. Haiku) se degrada a la variante basica.
+    const supportsDynamicWebSearch = /^claude-(sonnet-5|sonnet-4-6|opus-4-[678]|fable)/.test(model);
     const serverTools = (req.serverTools ?? []).map((t) => ({
-      type: t.anthropicType,
+      type:
+        t.anthropicType === 'web_search_20260209' && !supportsDynamicWebSearch
+          ? 'web_search_20250305'
+          : t.anthropicType,
       name: t.anthropicName,
     })) as unknown as Anthropic.Tool[];
 
@@ -165,7 +197,7 @@ export class LlmProvider {
       if (!apiKey) throw new Error('Falta ANTHROPIC_API_KEY u OPENAI_API_KEY en .env');
       this.openai = new OpenAI({ apiKey });
     }
-    const model = this.config.get<string>('OPENAI_MODEL') ?? 'gpt-4o-mini';
+    const model = req.model ?? this.config.get<string>('OPENAI_MODEL') ?? 'gpt-4o-mini';
     const maxIterations = req.maxIterations ?? 4;
     const toolCalls: AgenticToolCallTrace[] = [];
     const tools: OpenAI.Chat.ChatCompletionTool[] = req.tools.map((t) => ({
