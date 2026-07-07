@@ -1,7 +1,7 @@
 import { BadRequestException, Controller, ForbiddenException, Get, Param, Post, UseGuards } from '@nestjs/common';
-import { ProposalStatus } from '@prisma/client';
+import { ProposalStatus, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { AuthGuard } from '../auth/auth.guard';
+import { AuthGuard, Roles } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtPayload } from '../auth/auth.service';
 import { LearningLoopService } from './learning-loop.service';
@@ -21,6 +21,7 @@ export class LearningController {
   }
 
   /** Corre el loop de aprendizaje para un agente (analiza decisiones humanas recientes). */
+  @Roles(UserRole.TENANT_ADMIN)
   @Post('agents/:agentId/run')
   async runLoop(@Param('agentId') agentId: string, @CurrentUser() user: JwtPayload) {
     try {
@@ -39,6 +40,7 @@ export class LearningController {
     });
   }
 
+  @Roles(UserRole.TENANT_ADMIN)
   @Post('proposals/:id/approve')
   async approve(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
     try {
@@ -48,6 +50,7 @@ export class LearningController {
     }
   }
 
+  @Roles(UserRole.TENANT_ADMIN)
   @Post('proposals/:id/reject')
   async reject(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
     try {

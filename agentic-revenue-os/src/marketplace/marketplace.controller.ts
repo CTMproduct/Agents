@@ -11,8 +11,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import { UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { AuthGuard } from '../auth/auth.guard';
+import { AuthGuard, Roles } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtPayload } from '../auth/auth.service';
 import { AgentRunnerService } from '../agents/agent-runner.service';
@@ -83,6 +84,7 @@ export class MarketplaceController {
    */
   @Post('generate-skill')
   @UseGuards(AuthGuard)
+  @Roles(UserRole.TENANT_ADMIN)
   async generateSkill(
     @CurrentUser() user: JwtPayload,
     @Body() body: { answers: Record<string, string> },
@@ -132,6 +134,7 @@ export class MarketplaceController {
   /** "Probar Gratis": crea una copia editable de la plantilla para el tenant del usuario. */
   @Post('templates/:key/activate')
   @UseGuards(AuthGuard)
+  @Roles(UserRole.TENANT_ADMIN)
   async activate(@Param('key') key: string, @CurrentUser() user: JwtPayload) {
     if (!user.tenantId) throw new ForbiddenException('Tu cuenta no pertenece a ninguna empresa');
     const template = await this.prisma.agentTemplate.findUnique({ where: { key } });
@@ -151,6 +154,7 @@ export class MarketplaceController {
   /** "Crea el Tuyo": agente 100% personalizado, sin plantilla. */
   @Post('my-agents')
   @UseGuards(AuthGuard)
+  @Roles(UserRole.TENANT_ADMIN)
   async createCustom(
     @CurrentUser() user: JwtPayload,
     @Body() body: { name: string; skillMd: string; toolKeys?: string[] },
@@ -185,6 +189,7 @@ export class MarketplaceController {
   /** Editar nombre, skill principal, conectores, LLM y estado de un agente propio. */
   @Patch('my-agents/:id')
   @UseGuards(AuthGuard)
+  @Roles(UserRole.TENANT_ADMIN)
   async updateAgent(
     @Param('id') id: string,
     @CurrentUser() user: JwtPayload,
@@ -228,6 +233,7 @@ export class MarketplaceController {
 
   @Post('my-agents/:id/skills')
   @UseGuards(AuthGuard)
+  @Roles(UserRole.TENANT_ADMIN)
   async addSkill(
     @Param('id') id: string,
     @CurrentUser() user: JwtPayload,
@@ -246,6 +252,7 @@ export class MarketplaceController {
 
   @Patch('my-agents/:id/skills/:skillId')
   @UseGuards(AuthGuard)
+  @Roles(UserRole.TENANT_ADMIN)
   async updateSkill(
     @Param('id') id: string,
     @Param('skillId') skillId: string,
@@ -268,6 +275,7 @@ export class MarketplaceController {
 
   @Delete('my-agents/:id/skills/:skillId')
   @UseGuards(AuthGuard)
+  @Roles(UserRole.TENANT_ADMIN)
   async deleteSkill(@Param('id') id: string, @Param('skillId') skillId: string, @CurrentUser() user: JwtPayload) {
     const agent = await this.ownAgent(id, user);
     const skill = await this.prisma.tenantAgentSkill.findFirst({ where: { id: skillId, tenantAgentId: agent.id } });
@@ -280,6 +288,7 @@ export class MarketplaceController {
 
   @Post('my-agents/:id/knowledge')
   @UseGuards(AuthGuard)
+  @Roles(UserRole.TENANT_ADMIN)
   async addKnowledge(
     @Param('id') id: string,
     @CurrentUser() user: JwtPayload,
@@ -294,6 +303,7 @@ export class MarketplaceController {
 
   @Patch('my-agents/:id/knowledge/:docId')
   @UseGuards(AuthGuard)
+  @Roles(UserRole.TENANT_ADMIN)
   async updateKnowledge(
     @Param('id') id: string,
     @Param('docId') docId: string,
@@ -311,6 +321,7 @@ export class MarketplaceController {
 
   @Delete('my-agents/:id/knowledge/:docId')
   @UseGuards(AuthGuard)
+  @Roles(UserRole.TENANT_ADMIN)
   async deleteKnowledge(@Param('id') id: string, @Param('docId') docId: string, @CurrentUser() user: JwtPayload) {
     const agent = await this.ownAgent(id, user);
     const doc = await this.prisma.tenantAgentKnowledge.findFirst({ where: { id: docId, tenantAgentId: agent.id } });
@@ -322,6 +333,7 @@ export class MarketplaceController {
   /** Prueba rapida del agente contra un texto de ejemplo (sin webhook real). */
   @Post('my-agents/:id/run')
   @UseGuards(AuthGuard)
+  @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_MEMBER)
   async runAgent(
     @Param('id') id: string,
     @CurrentUser() user: JwtPayload,
@@ -340,6 +352,7 @@ export class MarketplaceController {
   /** Calificar una plantilla del catalogo (una calificacion por tenant y plantilla). */
   @Post('templates/:key/review')
   @UseGuards(AuthGuard)
+  @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_MEMBER)
   async review(
     @Param('key') key: string,
     @CurrentUser() user: JwtPayload,

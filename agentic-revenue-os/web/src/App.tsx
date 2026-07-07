@@ -1,7 +1,7 @@
 import { useEffect, useState, createContext, useContext } from 'react';
 import { HashRouter, Routes, Route, NavLink, Navigate, useNavigate } from 'react-router-dom';
 import { api, getToken, setToken, setUnauthorizedHandler } from './api';
-import { Dashboard, Marketplace, Agents, Review, Learning, Metrics } from './pages';
+import { Dashboard, Marketplace, Agents, Review, Learning, Metrics, Security } from './pages';
 
 export interface Me { id: string; email: string; role: string; tenant: { id: string; name: string } | null }
 const MeCtx = createContext<Me | null>(null);
@@ -44,10 +44,11 @@ function Login({ onAuth }: { onAuth: () => void }) {
 }
 
 function Shell({ me, onLogout }: { me: Me; onLogout: () => void }) {
-  const links = [
+  const links: Array<[string, string]> = [
     ['/dashboard', 'Dashboard'], ['/marketplace', 'Marketplace'], ['/agents', 'Mis Agentes'],
     ['/review', 'Human Review'], ['/learning', 'Aprendizaje'], ['/metrics', 'Métricas'],
-  ] as const;
+  ];
+  if (me.role === 'TENANT_ADMIN') links.push(['/security', 'Seguridad']);
   return (
     <MeCtx.Provider value={me}>
       <div className="layout">
@@ -70,6 +71,7 @@ function Shell({ me, onLogout }: { me: Me; onLogout: () => void }) {
             <Route path="/review" element={<Review />} />
             <Route path="/learning" element={<Learning />} />
             <Route path="/metrics" element={<Metrics />} />
+            <Route path="/security" element={<Security />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </main>

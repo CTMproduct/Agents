@@ -1,11 +1,15 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, SetMetadata, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { UserRole } from '@prisma/client';
 import { AuthService, JwtPayload } from './auth.service';
 
 export const ROLES_KEY = 'roles';
-/** Decorador opcional: @Roles(UserRole.PLATFORM_ADMIN) restringe el endpoint. */
-export const Roles = (...roles: UserRole[]) => Reflect.metadata(ROLES_KEY, roles);
+/**
+ * Decorador opcional: @Roles(UserRole.TENANT_ADMIN) restringe el endpoint.
+ * Usa SetMetadata (no Reflect.metadata) para que funcione tanto a nivel de
+ * metodo (getHandler) como de clase (getClass) con el Reflector de Nest.
+ */
+export const Roles = (...roles: UserRole[]) => SetMetadata(ROLES_KEY, roles);
 
 /** Exige un Bearer token valido. Adjunta req.user = JwtPayload. */
 @Injectable()

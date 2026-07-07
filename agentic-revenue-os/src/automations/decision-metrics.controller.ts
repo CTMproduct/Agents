@@ -1,10 +1,15 @@
-import { Controller, ForbiddenException, Get, UseGuards } from '@nestjs/common';
-import { ReviewStatus } from '@prisma/client';
+import { Controller, ForbiddenException, Get, Param, UseGuards } from '@nestjs/common';
+import { Prisma, ReviewStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtPayload } from '../auth/auth.service';
 import { runCostUsd } from '../crm/llm-pricing';
+
+function todayUtc(): Date {
+  const d = new Date();
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
 
 /**
  * Metricas de decision por tenant (Fase Metrics & Decision Intelligence):
@@ -96,6 +101,64 @@ export class DecisionMetricsController {
       };
     });
 
+    // Snapshot del dia de hoy en AgentDailyMetric (base para tendencias / ROI).
+    const date = todayUtc();
+    await Promise.all(
+      perAgent.map((a) =>
+        this.prisma.agentDailyMetric.upsert({
+          where: { tenantAgentId_date: { tenantAgentId: a.agentId, date } },
+          update: {
+            runs: a.runs,
+            approvals: a.approved,
+            rejections: a.rejected,
+            edits: a.edited,
+            escalations: a.escalated,
+            costUsd: new Prisma.Decimal(a.costUsd),
+            avgLatencyMs: a.avgLatencyMs ?? 0,
+          },
+          create: {
+            tenantId,
+            tenantAgentId: a.agentId,
+            date,
+            runs: a.runs,
+            approvals: a.approved,
+            rejections: a.rejected,
+            edits: a.edited,
+            escalations: a.escalated,
+            costUsd: new Prisma.Decimal(a.costUsd),
+            avgLatencyMs: a.avgLatencyMs ?? 0,
+          },
+        }),
+      ),
+    );
+
     return { agents: perAgent };
+  }
+
+  /** Tendencia diaria de un agente (ultimos 30 dias) desde AgentDailyMetric. */
+  @Get('daily/:agentId')
+  async daily(@Param('agentId') agentId: string, @CurrentUser() user: JwtPayload) {
+    if (!user.tenantId) throw new ForbiddenException('Tu cuenta no pertenece a ninguna empresa');
+    const agent = await this.prisma.tenantAgent.findFirst({
+      where: { id: agentId, tenantId: user.tenantId },
+      select: { id: true },
+    });
+    if (!agent) throw new ForbiddenException('Agente no encontrado en tu empresa');
+    const rows = await this.prisma.agentDailyMetric.findMany({
+      where: { tenantAgentId: agentId },
+      orderBy: { date: 'desc' },
+      take: 30,
+    });
+    return rows
+      .reverse()
+      .map((r) => ({
+        date: r.date.toISOString().slice(0, 10),
+        runs: r.runs,
+        approvals: r.approvals,
+        edits: r.edits,
+        rejections: r.rejections,
+        costUsd: Number(r.costUsd),
+        avgLatencyMs: r.avgLatencyMs,
+      }));
   }
 }

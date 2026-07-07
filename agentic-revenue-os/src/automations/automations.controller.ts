@@ -10,13 +10,16 @@ import {
   Param,
   Patch,
   Post,
+  Req,
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import { Prisma, WorkflowStatus } from '@prisma/client';
-import { randomUUID } from 'crypto';
+import { Prisma, UserRole, WorkflowStatus } from '@prisma/client';
+import { createHmac, randomUUID, timingSafeEqual } from 'crypto';
+import type { RawBodyRequest } from '@nestjs/common';
+import type { Request } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
-import { AuthGuard } from '../auth/auth.guard';
+import { AuthGuard, Roles } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtPayload } from '../auth/auth.service';
 import { WorkflowEngineService, WorkflowNode, WorkflowEdge } from './workflow-engine.service';
@@ -60,6 +63,29 @@ export class AutomationsController {
     }
   }
 
+  /** Comparacion en tiempo constante para evitar timing attacks. */
+  private safeEqual(a: string, b: string): boolean {
+    const ba = Buffer.from(a);
+    const bb = Buffer.from(b);
+    return ba.length === bb.length && timingSafeEqual(ba, bb);
+  }
+
+  /** Autoriza un webhook por secreto compartido o por firma HMAC-SHA256 del cuerpo crudo. */
+  private webhookAuthorized(
+    webhookSecret: string,
+    secret: string | undefined,
+    signature: string | undefined,
+    rawBody: Buffer | undefined,
+  ): boolean {
+    if (secret && this.safeEqual(secret, webhookSecret)) return true;
+    if (signature && rawBody) {
+      const expected = 'sha256=' + createHmac('sha256', webhookSecret).update(rawBody).digest('hex');
+      const provided = signature.startsWith('sha256=') ? signature : `sha256=${signature}`;
+      if (this.safeEqual(provided, expected)) return true;
+    }
+    return false;
+  }
+
   @Get('workflows')
   @UseGuards(AuthGuard)
   list(@CurrentUser() user: JwtPayload) {
@@ -75,6 +101,7 @@ export class AutomationsController {
 
   @Post('workflows')
   @UseGuards(AuthGuard)
+  @Roles(UserRole.TENANT_ADMIN)
   async create(
     @CurrentUser() user: JwtPayload,
     @Body() body: { name: string; description?: string; tenantAgentId?: string; nodes: WorkflowNode[]; edges: WorkflowEdge[] },
@@ -111,6 +138,7 @@ export class AutomationsController {
 
   @Patch('workflows/:id')
   @UseGuards(AuthGuard)
+  @Roles(UserRole.TENANT_ADMIN)
   async update(
     @Param('id') id: string,
     @CurrentUser() user: JwtPayload,
@@ -130,6 +158,20 @@ export class AutomationsController {
     if (body.status && !Object.values(WorkflowStatus).includes(body.status as WorkflowStatus)) {
       throw new BadRequestException(`status invalido: ${body.status}`);
     }
+
+    // Versionado: al cambiar el grafo, guarda la version anterior antes de sobreescribir.
+    if (body.nodes) {
+      await this.prisma.workflowVersion.create({
+        data: {
+          workflowId: wf.id,
+          version: wf.version,
+          nodes: wf.nodes as Prisma.InputJsonValue,
+          edges: wf.edges as Prisma.InputJsonValue,
+          changedBy: user.email,
+        },
+      });
+    }
+
     return this.prisma.automationWorkflow.update({
       where: { id: wf.id },
       data: {
@@ -147,8 +189,22 @@ export class AutomationsController {
     });
   }
 
+  /** Historial de versiones del grafo del workflow. */
+  @Get('workflows/:id/versions')
+  @UseGuards(AuthGuard)
+  async versions(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    const wf = await this.prisma.automationWorkflow.findFirst({ where: { id, tenantId: this.tenantOf(user) } });
+    if (!wf) throw new BadRequestException('Workflow no encontrado');
+    return this.prisma.workflowVersion.findMany({
+      where: { workflowId: wf.id },
+      orderBy: { version: 'desc' },
+      take: 50,
+    });
+  }
+
   @Delete('workflows/:id')
   @UseGuards(AuthGuard)
+  @Roles(UserRole.TENANT_ADMIN)
   async remove(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
     const wf = await this.prisma.automationWorkflow.findFirst({ where: { id, tenantId: this.tenantOf(user) } });
     if (!wf) throw new BadRequestException('Workflow no encontrado');
@@ -159,6 +215,7 @@ export class AutomationsController {
   /** Ejecucion manual (boton "Probar"). */
   @Post('workflows/:id/execute')
   @UseGuards(AuthGuard)
+  @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_MEMBER)
   async execute(
     @Param('id') id: string,
     @CurrentUser() user: JwtPayload,
@@ -185,19 +242,23 @@ export class AutomationsController {
   /**
    * Webhook publico: activa el workflow desde cualquier sistema externo.
    * Sin JWT (el publicId es no adivinable); solo workflows ACTIVE responden.
+   * Si hay webhookSecret configurado, se exige autenticacion por UNA de dos vias:
+   *  - x-webhook-secret: <secret>  (secreto compartido simple)
+   *  - x-webhook-signature: sha256=<hmac>  (HMAC-SHA256 del cuerpo crudo con el secret)
    * Si el flujo termina de forma sincrona con webhook.response, devuelve ese texto.
    */
   @Post('webhook/:publicId')
   async webhook(
     @Param('publicId') publicId: string,
     @Body() payload: Record<string, unknown>,
+    @Req() req: RawBodyRequest<Request>,
     @Headers('x-webhook-secret') secret?: string,
+    @Headers('x-webhook-signature') signature?: string,
   ) {
     const wf = await this.prisma.automationWorkflow.findUnique({ where: { publicId } });
     if (!wf || wf.status !== WorkflowStatus.ACTIVE) throw new NotFoundException('Webhook no disponible');
-    // Capa extra opcional sobre el publicId no adivinable: secreto compartido por header.
-    if (wf.webhookSecret && secret !== wf.webhookSecret) {
-      throw new UnauthorizedException('x-webhook-secret invalido');
+    if (wf.webhookSecret && !this.webhookAuthorized(wf.webhookSecret, secret, signature, req.rawBody)) {
+      throw new UnauthorizedException('Autenticacion de webhook invalida (x-webhook-secret o x-webhook-signature)');
     }
     const { executionId } = await this.engine.execute(wf.id, wf.tenantId, payload ?? {});
     const execution = await this.prisma.automationExecution.findUnique({ where: { id: executionId } });

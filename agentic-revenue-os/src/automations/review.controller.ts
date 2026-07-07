@@ -9,9 +9,9 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ReviewStatus } from '@prisma/client';
+import { ReviewStatus, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { AuthGuard } from '../auth/auth.guard';
+import { AuthGuard, Roles } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtPayload } from '../auth/auth.service';
 import { AuditService } from '../audit/audit.service';
@@ -64,11 +64,13 @@ export class ReviewController {
     return this.ownReview(id, user);
   }
 
+  @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_MEMBER, UserRole.TENANT_REVIEWER)
   @Post(':id/approve')
   async approve(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
     return this.decide(id, user, ReviewStatus.APPROVED);
   }
 
+  @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_MEMBER, UserRole.TENANT_REVIEWER)
   @Post(':id/edit-and-approve')
   async editAndApprove(
     @Param('id') id: string,
@@ -79,11 +81,13 @@ export class ReviewController {
     return this.decide(id, user, ReviewStatus.EDITED, body.finalOutput.trim());
   }
 
+  @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_MEMBER, UserRole.TENANT_REVIEWER)
   @Post(':id/reject')
   async reject(@Param('id') id: string, @CurrentUser() user: JwtPayload, @Body() body: { reason?: string }) {
     return this.decide(id, user, ReviewStatus.REJECTED, undefined, body?.reason);
   }
 
+  @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_MEMBER, UserRole.TENANT_REVIEWER)
   @Post(':id/escalate')
   async escalate(@Param('id') id: string, @CurrentUser() user: JwtPayload, @Body() body: { note?: string }) {
     const review = await this.ownReview(id, user);
@@ -102,6 +106,7 @@ export class ReviewController {
   }
 
   /** Guarda una nota de aprendizaje sobre una revision ya decidida. */
+  @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_MEMBER, UserRole.TENANT_REVIEWER)
   @Post(':id/save-learning')
   async saveLearning(@Param('id') id: string, @CurrentUser() user: JwtPayload, @Body() body: { note: string }) {
     if (!body?.note?.trim()) throw new BadRequestException('note es obligatoria');

@@ -21,6 +21,7 @@ import { ApprovalModule } from './approval/approval.module';
 import { AuthModule } from './auth/auth.module';
 import { MarketplaceModule } from './marketplace/marketplace.module';
 import { AutomationsModule } from './automations/automations.module';
+import { SecurityModule } from './security/security.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { AutomationsModule } from './automations/automations.module';
     ApprovalModule,
     MarketplaceModule,
     AutomationsModule,
+    SecurityModule,
   ],
   controllers: [RootController, HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

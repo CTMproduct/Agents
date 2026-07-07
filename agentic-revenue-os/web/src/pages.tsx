@@ -333,3 +333,66 @@ export function Metrics() {
     </div>
   );
 }
+
+// ---------- Seguridad (Vault + Usuarios) ----------
+const ROLE_LABELS: Record<string, string> = {
+  TENANT_ADMIN: 'Administrador', TENANT_MEMBER: 'Operador', TENANT_REVIEWER: 'Revisor', TENANT_VIEWER: 'Solo lectura',
+};
+
+export function Security() {
+  const [secrets, reloadSecrets] = useLoad(() => api<any[]>('/security/secrets'));
+  const [users, reloadUsers] = useLoad(() => api<any[]>('/security/users'));
+  const [secret, setSecret] = useState({ name: '', value: '' });
+  const [newUser, setNewUser] = useState({ email: '', password: '', role: 'TENANT_MEMBER' });
+
+  const addSecret = async () => {
+    try { await api('/security/secrets', { method: 'POST', body: JSON.stringify(secret) }); setSecret({ name: '', value: '' }); reloadSecrets(); }
+    catch (e) { alert((e as Error).message); }
+  };
+  const delSecret = async (id: string) => { await api(`/security/secrets/${id}`, { method: 'DELETE' }); reloadSecrets(); };
+  const addUser = async () => {
+    try { await api('/security/users', { method: 'POST', body: JSON.stringify(newUser) }); setNewUser({ email: '', password: '', role: 'TENANT_MEMBER' }); reloadUsers(); }
+    catch (e) { alert((e as Error).message); }
+  };
+
+  return (
+    <div>
+      <h1>Seguridad & Gobierno</h1>
+      <p className="sub">Vault de secretos cifrado (AES-256-GCM) y control de acceso por roles. Los valores de los secretos nunca se muestran una vez guardados.</p>
+
+      <h1 style={{ fontSize: 16 }}>Vault de secretos</h1>
+      <div className="card" style={{ maxWidth: 620, marginBottom: 12 }}>
+        <div className="row">
+          <input placeholder="Nombre (ej. WHATSAPP_TOKEN)" value={secret.name} onChange={(e) => setSecret({ ...secret, name: e.target.value })} style={{ flex: 1 }} />
+          <input placeholder="Valor secreto" type="password" value={secret.value} onChange={(e) => setSecret({ ...secret, value: e.target.value })} style={{ flex: 1 }} />
+          <button className="btn accent" disabled={!secret.name || !secret.value} onClick={addSecret}>Guardar</button>
+        </div>
+      </div>
+      {(secrets ?? []).map((s) => (
+        <div key={s.id} className="list-item row" style={{ justifyContent: 'space-between' }}>
+          <div><b>{s.name}</b> <span className="mono">••••••••</span> <span style={{ color: 'var(--muted)', fontSize: 12 }}>por {s.createdBy ?? '—'} · {fmt(s.createdAt)}</span></div>
+          <button className="btn danger sm" onClick={() => delSecret(s.id)}>Eliminar</button>
+        </div>
+      ))}
+      {!(secrets ?? []).length && <div className="empty">Sin secretos. Guarda tokens de APIs, WhatsApp, CRM, etc.</div>}
+
+      <h1 style={{ fontSize: 16, marginTop: 24 }}>Usuarios y roles</h1>
+      <div className="card" style={{ maxWidth: 720, marginBottom: 12 }}>
+        <div className="row">
+          <input placeholder="Email" value={newUser.email} onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} style={{ flex: 1 }} />
+          <input placeholder="Contraseña (min 8)" type="password" value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} style={{ flex: 1 }} />
+          <select value={newUser.role} onChange={(e) => setNewUser({ ...newUser, role: e.target.value })} style={{ width: 160 }}>
+            {Object.entries(ROLE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+          <button className="btn accent" disabled={!newUser.email || newUser.password.length < 8} onClick={addUser}>Crear</button>
+        </div>
+      </div>
+      {(users ?? []).map((u) => (
+        <div key={u.id} className="list-item row" style={{ justifyContent: 'space-between' }}>
+          <div><b>{u.email}</b></div>
+          <span className="badge">{ROLE_LABELS[u.role] ?? u.role}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
