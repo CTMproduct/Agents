@@ -12,6 +12,7 @@ import { WorkflowsModule } from './workflows/workflows.module';
 import { ApprovalModule } from './approval/approval.module';
 import { AuthModule } from './auth/auth.module';
 import { MarketplaceModule } from './marketplace/marketplace.module';
+import { AutomationsModule } from './automations/automations.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { MarketplaceModule } from './marketplace/marketplace.module';
     WorkflowsModule,
     ApprovalModule,
     MarketplaceModule,
+    AutomationsModule,
   ],
   controllers: [RootController, HealthController],
 })

@@ -390,3 +390,115 @@ model AgentReview {
 
   @@unique([tenantId, templateId])
 }
+
+// ---------- Automation Studio (workflows visuales tipo n8n) ----------
+
+enum WorkflowStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+}
+
+enum ExecutionStatus {
+  QUEUED
+  RUNNING
+  WAITING_FOR_APPROVAL
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
+model AutomationWorkflow {
+  id            String         @id @default(cuid())
+  tenantId      String
+  tenantAgentId String? // agente por defecto para los nodos agent.run
+  name          String
+  description   String?
+  status        WorkflowStatus @default(DRAFT)
+  triggerType   String         @default("manual") // manual | webhook
+  nodes         Json // [{id, type, position:{x,y}, data}]
+  edges         Json // [{id, source, target}]
+  version       Int            @default(1)
+  publicId      String?        @unique // para POST /automations/webhook/:publicId
+  lastRunAt     DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  executions AutomationExecution[]
+
+  @@index([tenantId])
+}
+
+model AutomationExecution {
+  id          String          @id @default(cuid())
+  workflow    AutomationWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  workflowId  String
+  tenantId    String
+  status      ExecutionStatus @default(RUNNING)
+  input       Json?
+  nodeOutputs Json? // { [nodeId]: {status, output, error, latencyMs} } -- ejecucion paso a paso
+  output      Json? // respuesta final (nodo webhook.response si existe)
+  error       String?
+  pausedNodeId String? // nodo en el que quedo pausada esperando aprobacion humana
+  startedAt   DateTime        @default(now())
+  finishedAt  DateTime?
+
+  reviews PendingReview[]
+
+  @@index([tenantId, startedAt])
+}
+
+// ---------- Human Review Console (multi-tenant) ----------
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  EDITED
+  REJECTED
+  ESCALATED
+}
+
+model PendingReview {
+  id            String       @id @default(cuid())
+  tenantId      String
+  tenantAgentId String?
+  execution     AutomationExecution? @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  executionId   String?
+  agentRunId    String?
+  channel       String? // origen: workflow | test | webhook
+  inputSummary  String // mensaje del cliente / input del nodo
+  suggestedOutput String // lo que el agente propone
+  finalOutput   String? // lo que el humano dejo (si edito)
+  status        ReviewStatus @default(PENDING)
+  reviewedBy    String?
+  learningNote  String? // "guardar como aprendizaje"
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([tenantId, status, createdAt])
+}
+
+// ---------- Learning Loops: propuestas de mejora (nunca cambian el prompt solas) ----------
+
+enum ProposalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model AgentSkillProposal {
+  id            String         @id @default(cuid())
+  tenantId      String
+  tenantAgentId String
+  proposalType  String         @default("skill_update") // skill_update | memory | guardrail
+  title         String
+  proposedValue String // contenido .md propuesto
+  reason        String
+  evidence      Json? // { editedReplies, rejectedReplies, examples }
+  status        ProposalStatus @default(PENDING)
+  decidedBy     String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([tenantId, status])
+}

@@ -92,6 +92,38 @@
   td{padding:10px;border-bottom:1px solid rgba(148,163,184,.06)}
   .empty{color:var(--muted);text-align:center;padding:60px 0}
   h2.sec{font-size:.82rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin:26px 0 14px;font-weight:700}
+  /* Automation Studio */
+  .studio-bar{display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+  .studio-bar input,.studio-bar select{padding:9px 12px;border-radius:9px;border:1px solid rgba(148,163,184,.2);background:#0a0e0b;color:var(--ink);font:inherit;font-size:.84rem}
+  .studio{display:flex;gap:12px;height:520px}
+  .palette{width:180px;flex-shrink:0;background:var(--panel);border:1px solid rgba(199,224,78,.14);border-radius:14px;padding:12px;overflow:auto}
+  .palette h4{margin:10px 0 6px;font-size:.66rem;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted)}
+  .palette button{display:block;width:100%;text-align:left;margin-bottom:5px;padding:8px 10px;border-radius:9px;border:1px solid rgba(148,163,184,.15);background:#0d1310;color:var(--ink);font-size:.78rem;cursor:pointer}
+  .palette button:hover{border-color:var(--lime);color:var(--lime)}
+  .canvas-wrap{flex:1;position:relative;background:radial-gradient(circle,rgba(148,163,184,.09) 1px,transparent 1px);background-size:22px 22px;border:1px solid rgba(199,224,78,.14);border-radius:14px;overflow:hidden}
+  #edgeSvg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  #canvas{position:absolute;inset:0}
+  .wfnode{position:absolute;width:170px;background:#101720;border:2px solid var(--nc,#60a5fa);border-radius:12px;padding:10px 12px;cursor:grab;user-select:none;box-shadow:0 8px 22px -10px rgba(0,0,0,.7)}
+  .wfnode.selected{outline:2px solid var(--lime)}
+  .wfnode .nt{font-size:.62rem;letter-spacing:1px;text-transform:uppercase;color:var(--nc,#60a5fa);font-weight:800}
+  .wfnode .nl{font-size:.8rem;font-weight:700;margin:3px 0 6px;color:var(--ink)}
+  .wfnode .nact{display:flex;gap:6px}
+  .wfnode .nact button{font-size:.62rem;padding:3px 8px;border-radius:6px;border:1px solid rgba(148,163,184,.25);background:transparent;color:var(--muted);cursor:pointer}
+  .wfnode .nact button:hover{color:var(--lime);border-color:var(--lime)}
+  .wfnode[data-cat=trigger]{--nc:#a78bfa} .wfnode[data-cat=agent]{--nc:#60a5fa}
+  .wfnode[data-cat=logic]{--nc:#fbbf24} .wfnode[data-cat=human]{--nc:#fb923c} .wfnode[data-cat=action]{--nc:#94a3b8}
+  .nodeconfig{width:250px;flex-shrink:0;background:var(--panel);border:1px solid rgba(199,224,78,.14);border-radius:14px;padding:14px;overflow:auto}
+  .nodeconfig label{display:block;font-size:.7rem;color:var(--muted);margin:10px 0 4px;font-weight:600}
+  .nodeconfig input,.nodeconfig select,.nodeconfig textarea{width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(148,163,184,.2);background:#0a0e0b;color:var(--ink);font:inherit;font-size:.8rem}
+  .wf-item{background:var(--panel);border:1px solid rgba(199,224,78,.14);border-radius:14px;padding:16px 18px;margin-bottom:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .wf-item h3{margin:0;font-size:.95rem;color:var(--lime);flex:1;min-width:180px}
+  .exec-step{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid rgba(148,163,184,.08);font-size:.8rem}
+  .exec-step .dot{width:10px;height:10px;border-radius:50%;margin-top:4px;flex-shrink:0}
+  .review-card{background:var(--panel);border:1px solid rgba(199,224,78,.14);border-radius:14px;padding:16px 18px;margin-bottom:12px;max-width:880px}
+  .review-card .meta{font-size:.75rem;color:var(--muted);margin-bottom:8px;display:flex;gap:12px;flex-wrap:wrap}
+  .review-card .msg-in,.review-card .msg-out{padding:10px 13px;border-radius:10px;font-size:.84rem;white-space:pre-wrap;margin-bottom:8px}
+  .review-card .msg-in{background:rgba(148,163,184,.08);border:1px solid rgba(148,163,184,.14)}
+  .review-card .msg-out{background:rgba(199,224,78,.07);border:1px solid rgba(199,224,78,.2)}
 </style>
 </head>
 <body>
@@ -100,6 +132,9 @@
   <nav>
     <button id="nav-catalog" class="active" onclick="showView('catalog')">Catálogo</button>
     <button id="nav-dashboard" onclick="showView('dashboard')">Mis Agentes</button>
+    <button id="nav-automations" onclick="showView('automations')">Automatizaciones</button>
+    <button id="nav-review" onclick="showView('review')">Revisión</button>
+    <button id="nav-learning" onclick="showView('learning')">Aprendizaje</button>
     <button id="nav-admin" class="hidden" onclick="showView('admin')">Admin</button>
   </nav>
   <div class="right" id="authArea"></div>
@@ -127,6 +162,68 @@
     <h2 class="sec">Todos los agentes activados</h2>
     <div class="agent-card"><table id="allAgentsTable"></table></div>
   </section>
+
+  <section id="view-automations" class="hidden">
+    <h1 class="hero">Automation <span>Studio</span></h1>
+    <p class="sub">Conecta triggers, agentes, condiciones y aprobación humana en un flujo visual. Actívalo por webhook para recibir datos de formularios, WhatsApp o tu CRM.</p>
+    <div id="wfListArea">
+      <div class="row-actions" style="margin-bottom:16px"><button class="btn" onclick="newWorkflow()">+ Nueva automatización</button></div>
+      <div id="wfList"></div>
+    </div>
+    <div id="wfEditorArea" class="hidden">
+      <div class="studio-bar">
+        <input id="wfName" placeholder="Nombre del workflow" style="flex:1;max-width:280px"/>
+        <select id="wfAgent" style="max-width:240px"></select>
+        <button class="btn small" onclick="saveWorkflow()">Guardar</button>
+        <button class="btn ghost small" onclick="testWorkflow()">Probar</button>
+        <button class="btn ghost small" id="wfActivateBtn" onclick="toggleWorkflowActive()">Activar</button>
+        <button class="btn ghost small" onclick="loadExecutions()">Ejecuciones</button>
+        <button class="btn ghost small" onclick="closeEditor()">← Volver</button>
+      </div>
+      <div id="wfWebhookInfo" class="hidden" style="font-size:.78rem;color:var(--muted);margin:8px 0"></div>
+      <div class="studio">
+        <div class="palette">
+          <h4>Triggers</h4>
+          <button onclick="addNode('trigger.manual')">▶ Manual</button>
+          <button onclick="addNode('trigger.webhook')">🌐 Webhook</button>
+          <h4>Agente</h4>
+          <button onclick="addNode('agent.run')">🤖 Ejecutar agente</button>
+          <h4>Lógica</h4>
+          <button onclick="addNode('condition.if')">◇ Si / No</button>
+          <h4>Humano</h4>
+          <button onclick="addNode('human.approval')">✋ Aprobación humana</button>
+          <h4>Acciones</h4>
+          <button onclick="addNode('webhook.response')">↩ Responder webhook</button>
+          <p style="font-size:.68rem;color:var(--muted);margin-top:14px">Para conectar: clic en <b>Conectar</b> dentro de un nodo y luego clic en el nodo destino.</p>
+        </div>
+        <div class="canvas-wrap"><svg id="edgeSvg"></svg><div id="canvas"></div></div>
+        <div class="nodeconfig" id="nodeConfig"><p class="empty" style="padding:20px 10px;font-size:.8rem">Selecciona un nodo para configurarlo</p></div>
+      </div>
+      <div id="execList" class="hidden" style="margin-top:18px"></div>
+    </div>
+  </section>
+
+  <section id="view-review" class="hidden">
+    <h1 class="hero">Human <span>Review</span></h1>
+    <p class="sub">Todo lo que tus agentes proponen espera aquí tu decisión. Aprobar reanuda la automatización; rechazar la cancela. Cada decisión alimenta el aprendizaje del agente.</p>
+    <div class="row-actions" style="margin-bottom:14px">
+      <button class="btn small" onclick="loadReviewQueue('PENDING')">Pendientes</button>
+      <button class="btn ghost small" onclick="loadReviewQueue('APPROVED')">Aprobadas</button>
+      <button class="btn ghost small" onclick="loadReviewQueue('EDITED')">Editadas</button>
+      <button class="btn ghost small" onclick="loadReviewQueue('REJECTED')">Rechazadas</button>
+    </div>
+    <div id="reviewList"></div>
+  </section>
+
+  <section id="view-learning" class="hidden">
+    <h1 class="hero">Learning <span>Loops</span></h1>
+    <p class="sub">El agente analiza lo que editaste y rechazaste, y propone mejoras a su skill. Nada cambia sin tu aprobación: cada propuesta se aplica como un skill .md nuevo solo si la apruebas.</p>
+    <div class="row-actions" style="margin-bottom:14px">
+      <select id="loopAgent" style="max-width:280px"></select>
+      <button class="btn small" onclick="runLoop()">Analizar decisiones y proponer mejora</button>
+    </div>
+    <div id="proposalList"></div>
+  </section>
 </main>
 
 <script>
@@ -146,12 +243,15 @@ async function api(path, opts={}){
 }
 
 function showView(name){
-  ['catalog','dashboard','admin'].forEach(v=>{
+  ['catalog','dashboard','admin','automations','review','learning'].forEach(v=>{
     document.getElementById('view-'+v).classList.toggle('hidden', v!==name);
     document.getElementById('nav-'+v).classList.toggle('active', v===name);
   });
   if(name==='dashboard') loadMyAgents();
   if(name==='admin') loadAdmin();
+  if(name==='automations') loadWorkflows();
+  if(name==='review') loadReviewQueue('PENDING');
+  if(name==='learning') loadLearning();
 }
 
 function renderAuthArea(){
@@ -504,6 +604,327 @@ async function loadAdmin(){
   document.getElementById('allAgentsTable').innerHTML=
     `<tr><th>Empresa</th><th>Agente</th><th>Plantilla</th><th>Estado</th></tr>` +
     (agents.map(a=>`<tr><td>${esc(a.tenant.name)}</td><td>${esc(a.name)}</td><td>${esc(a.template?.name||'personalizado')}</td><td>${a.active?'Activo':'Inactivo'}</td></tr>`).join('')||'<tr><td colspan="4" style="color:var(--muted)">Ninguno aún</td></tr>');
+}
+
+// ================= Automation Studio =================
+const NODE_META={
+  'trigger.manual':{cat:'trigger',label:'Trigger manual'},
+  'trigger.webhook':{cat:'trigger',label:'Trigger webhook'},
+  'agent.run':{cat:'agent',label:'Ejecutar agente'},
+  'condition.if':{cat:'logic',label:'Si / No'},
+  'human.approval':{cat:'human',label:'Aprobación humana'},
+  'webhook.response':{cat:'action',label:'Responder webhook'},
+};
+let WF=null, SELECTED=null, CONNECT_FROM=null, NODE_SEQ=1, MY_AGENTS_CACHE=[];
+
+async function loadWorkflows(){
+  if(!TOKEN){ document.getElementById('wfList').innerHTML='<p class="empty">Inicia sesión para crear automatizaciones.</p>'; return; }
+  closeEditor();
+  const wfs=await api('/automations/workflows');
+  document.getElementById('wfList').innerHTML=wfs.length?wfs.map(w=>`
+    <div class="wf-item">
+      <h3>${esc(w.name)}</h3>
+      <span class="badge ${w.status==='ACTIVE'?'':'off'}">${w.status}</span>
+      <span class="badge">trigger: ${esc(w.triggerType)}</span>
+      <span class="badge">v${w.version}</span>
+      ${w.publicId?`<span class="badge" title="POST /automations/webhook/${esc(w.publicId)}">🌐 webhook</span>`:''}
+      <button class="btn small" onclick="openWorkflow('${w.id}')">Abrir</button>
+      <button class="btn danger small" onclick="deleteWorkflow('${w.id}')">✕</button>
+    </div>`).join('')
+  :'<p class="empty">Sin automatizaciones. Crea la primera: trigger → agente → aprobación humana → respuesta.</p>';
+}
+
+async function ensureAgentsCache(){
+  if(!MY_AGENTS_CACHE.length) MY_AGENTS_CACHE=await api('/marketplace/my-agents');
+  return MY_AGENTS_CACHE;
+}
+
+async function newWorkflow(){
+  await ensureAgentsCache();
+  WF={id:null,name:'Mi automatización',tenantAgentId:MY_AGENTS_CACHE[0]?.id??null,status:'DRAFT',publicId:null,
+    nodes:[{id:'n1',type:'trigger.webhook',position:{x:40,y:200},data:{}}],edges:[]};
+  NODE_SEQ=2; openEditor();
+}
+
+async function openWorkflow(id){
+  await ensureAgentsCache();
+  const w=await api('/automations/workflows/'+id);
+  WF={id:w.id,name:w.name,tenantAgentId:w.tenantAgentId,status:w.status,publicId:w.publicId,nodes:w.nodes,edges:w.edges};
+  NODE_SEQ=WF.nodes.length+1+Math.floor(Math.random()*100);
+  openEditor();
+}
+
+function openEditor(){
+  document.getElementById('wfListArea').classList.add('hidden');
+  document.getElementById('wfEditorArea').classList.remove('hidden');
+  document.getElementById('wfName').value=WF.name;
+  const sel=document.getElementById('wfAgent');
+  sel.innerHTML='<option value="">(sin agente por defecto)</option>'+MY_AGENTS_CACHE.map(a=>`<option value="${a.id}" ${WF.tenantAgentId===a.id?'selected':''}>${esc(a.name)}</option>`).join('');
+  document.getElementById('wfActivateBtn').textContent=WF.status==='ACTIVE'?'Pausar':'Activar';
+  updateWebhookInfo(); renderCanvas(); selectNode(null);
+  document.getElementById('execList').classList.add('hidden');
+}
+function closeEditor(){
+  document.getElementById('wfEditorArea')?.classList.add('hidden');
+  document.getElementById('wfListArea')?.classList.remove('hidden');
+  WF=null; SELECTED=null; CONNECT_FROM=null;
+}
+function updateWebhookInfo(){
+  const el=document.getElementById('wfWebhookInfo');
+  if(WF?.publicId){
+    el.classList.remove('hidden');
+    el.innerHTML=`URL del webhook (POST con JSON, ej. {"message":"hola"}): <code style="color:var(--lime)">${location.origin}/automations/webhook/${esc(WF.publicId)}</code> — solo responde cuando el workflow está ACTIVO.`;
+  } else el.classList.add('hidden');
+}
+
+function addNode(type){
+  if(!WF) return;
+  if(type.startsWith('trigger.') && WF.nodes.some(n=>n.type.startsWith('trigger.'))){ alert('Ya hay un trigger. Elimínalo primero.'); return; }
+  WF.nodes.push({id:'n'+(NODE_SEQ++),type,position:{x:220+Math.random()*160,y:80+Math.random()*260},data:{}});
+  renderCanvas();
+}
+function deleteNode(id){
+  WF.nodes=WF.nodes.filter(n=>n.id!==id);
+  WF.edges=WF.edges.filter(e=>e.source!==id&&e.target!==id);
+  if(SELECTED===id) selectNode(null);
+  renderCanvas();
+}
+function startConnect(id){ CONNECT_FROM=id; renderCanvas(); }
+
+function nodeClicked(id){
+  if(CONNECT_FROM && CONNECT_FROM!==id){
+    const from=WF.nodes.find(n=>n.id===CONNECT_FROM);
+    let sourceHandle;
+    if(from?.type==='condition.if'){
+      sourceHandle=confirm('¿Esta conexión es para el camino SÍ (verdadero)?\nAceptar = SÍ · Cancelar = NO')?'true':'false';
+    }
+    WF.edges=WF.edges.filter(e=>!(e.source===CONNECT_FROM && (e.sourceHandle??'x')===(sourceHandle??'x')));
+    WF.edges.push({id:'e'+Date.now(),source:CONNECT_FROM,target:id,sourceHandle});
+    CONNECT_FROM=null; renderCanvas(); return;
+  }
+  selectNode(id);
+}
+
+function renderCanvas(){
+  const canvas=document.getElementById('canvas');
+  canvas.innerHTML=WF.nodes.map(n=>{
+    const meta=NODE_META[n.type]||{cat:'action',label:n.type};
+    return `<div class="wfnode ${SELECTED===n.id?'selected':''}" data-cat="${meta.cat}" id="wfn-${n.id}"
+      style="left:${n.position.x}px;top:${n.position.y}px" onmousedown="dragNode(event,'${n.id}')" onclick="event.stopPropagation();nodeClicked('${n.id}')">
+      <div class="nt">${meta.cat}${CONNECT_FROM===n.id?' · conectando…':''}</div>
+      <div class="nl">${esc(meta.label)}</div>
+      <div class="nact">
+        <button onclick="event.stopPropagation();startConnect('${n.id}')">Conectar →</button>
+        ${meta.cat!=='trigger'?`<button onclick="event.stopPropagation();deleteNode('${n.id}')">✕</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+  drawEdges();
+}
+function drawEdges(){
+  const svg=document.getElementById('edgeSvg');
+  svg.innerHTML=WF.edges.map(e=>{
+    const s=WF.nodes.find(n=>n.id===e.source), t=WF.nodes.find(n=>n.id===e.target);
+    if(!s||!t) return '';
+    const x1=s.position.x+170,y1=s.position.y+38,x2=t.position.x,y2=t.position.y+38;
+    const mx=(x1+x2)/2;
+    const color=e.sourceHandle==='false'?'#fb7185':e.sourceHandle==='true'?'#34d399':'#8ea08f';
+    return `<path d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}" stroke="${color}" stroke-width="2" fill="none"/>
+      ${e.sourceHandle?`<text x="${mx}" y="${(y1+y2)/2-6}" fill="${color}" font-size="10" text-anchor="middle">${e.sourceHandle==='true'?'SÍ':'NO'}</text>`:''}`;
+  }).join('');
+}
+function dragNode(ev,id){
+  if(ev.target.tagName==='BUTTON') return;
+  const node=WF.nodes.find(n=>n.id===id);
+  const startX=ev.clientX,startY=ev.clientY,ox=node.position.x,oy=node.position.y;
+  const move=e=>{ node.position.x=Math.max(0,ox+e.clientX-startX); node.position.y=Math.max(0,oy+e.clientY-startY);
+    const el=document.getElementById('wfn-'+id); el.style.left=node.position.x+'px'; el.style.top=node.position.y+'px'; drawEdges(); };
+  const up=()=>{ document.removeEventListener('mousemove',move); document.removeEventListener('mouseup',up); };
+  document.addEventListener('mousemove',move); document.addEventListener('mouseup',up);
+}
+
+function selectNode(id){
+  SELECTED=id;
+  document.querySelectorAll('.wfnode').forEach(el=>el.classList.toggle('selected', el.id==='wfn-'+id));
+  const panel=document.getElementById('nodeConfig');
+  const node=WF?.nodes.find(n=>n.id===id);
+  if(!node){ panel.innerHTML='<p class="empty" style="padding:20px 10px;font-size:.8rem">Selecciona un nodo para configurarlo</p>'; return; }
+  const meta=NODE_META[node.type];
+  let fields='';
+  if(node.type==='agent.run'){
+    fields=`<label>Agente (vacío = el del workflow)</label>
+      <select onchange="SELECTED_DATA('agentId',this.value)">
+        <option value="">(agente del workflow)</option>
+        ${MY_AGENTS_CACHE.map(a=>`<option value="${a.id}" ${node.data.agentId===a.id?'selected':''}>${esc(a.name)}</option>`).join('')}
+      </select>
+      <label>Plantilla del mensaje ({{input}} = texto entrante)</label>
+      <textarea rows="3" onchange="SELECTED_DATA('messageTemplate',this.value)">${esc(node.data.messageTemplate||'{{input}}')}</textarea>`;
+  } else if(node.type==='condition.if'){
+    fields=`<label>El texto contiene…</label>
+      <input value="${esc(node.data.contains||'')}" onchange="SELECTED_DATA('contains',this.value)" placeholder="ej. cotizar"/>
+      <p style="font-size:.68rem;color:var(--muted)">Conecta dos salidas: una SÍ y una NO.</p>`;
+  } else if(node.type==='webhook.response'){
+    fields=`<label>Plantilla de respuesta ({{text}} = último texto)</label>
+      <textarea rows="3" onchange="SELECTED_DATA('template',this.value)">${esc(node.data.template||'{{text}}')}</textarea>`;
+  } else if(node.type==='human.approval'){
+    fields=`<p style="font-size:.75rem;color:var(--muted)">La ejecución se pausa aquí y aparece en <b>Revisión</b>. Aprobar continúa el flujo; rechazar lo cancela.</p>`;
+  } else {
+    fields=`<p style="font-size:.75rem;color:var(--muted)">El trigger recibe el input inicial (ej. {"message":"..."}) y lo pasa al siguiente nodo.</p>`;
+  }
+  panel.innerHTML=`<div style="font-size:.68rem;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">${meta.cat}</div>
+    <div style="font-weight:800;margin-bottom:6px">${esc(meta.label)}</div>${fields}`;
+}
+function SELECTED_DATA(key,value){ const n=WF.nodes.find(x=>x.id===SELECTED); if(n) n.data[key]=value; }
+
+async function saveWorkflow(){
+  WF.name=document.getElementById('wfName').value.trim()||'Mi automatización';
+  WF.tenantAgentId=document.getElementById('wfAgent').value||null;
+  const body={name:WF.name,tenantAgentId:WF.tenantAgentId,nodes:WF.nodes,edges:WF.edges};
+  try{
+    const saved=WF.id
+      ?await api('/automations/workflows/'+WF.id,{method:'PATCH',body:JSON.stringify(body)})
+      :await api('/automations/workflows',{method:'POST',body:JSON.stringify(body)});
+    WF.id=saved.id; WF.publicId=saved.publicId; WF.status=saved.status;
+    updateWebhookInfo(); alert('Guardado.');
+  }catch(e){ alert('Error: '+e.message); }
+}
+async function toggleWorkflowActive(){
+  if(!WF.id){ alert('Guarda primero.'); return; }
+  const next=WF.status==='ACTIVE'?'PAUSED':'ACTIVE';
+  try{
+    const saved=await api('/automations/workflows/'+WF.id,{method:'PATCH',body:JSON.stringify({status:next})});
+    WF.status=saved.status;
+    document.getElementById('wfActivateBtn').textContent=WF.status==='ACTIVE'?'Pausar':'Activar';
+    alert(WF.status==='ACTIVE'?'Workflow ACTIVO: el webhook ya recibe datos.':'Workflow pausado.');
+  }catch(e){ alert('Error: '+e.message); }
+}
+async function testWorkflow(){
+  if(!WF.id){ alert('Guarda primero.'); return; }
+  const message=prompt('Mensaje de prueba para el trigger:','Hola, quiero una cotización');
+  if(message==null) return;
+  try{
+    await api('/automations/workflows/'+WF.id+'/execute',{method:'POST',body:JSON.stringify({input:{message}})});
+    await loadExecutions();
+  }catch(e){ alert('Error: '+e.message); }
+}
+async function deleteWorkflow(id){
+  if(!confirm('¿Eliminar esta automatización y su historial?')) return;
+  try{ await api('/automations/workflows/'+id,{method:'DELETE'}); loadWorkflows(); }catch(e){ alert('Error: '+e.message); }
+}
+async function loadExecutions(){
+  const list=document.getElementById('execList');
+  list.classList.remove('hidden');
+  const execs=await api('/automations/workflows/'+WF.id+'/executions');
+  const dot={SUCCESS:'#34d399',FAILED:'#fb7185',RUNNING:'#fbbf24',WAITING_FOR_APPROVAL:'#fb923c',CANCELLED:'#94a3b8',QUEUED:'#94a3b8'};
+  list.innerHTML='<h2 class="sec">Ejecuciones</h2>'+(execs.length?execs.map(x=>{
+    const steps=Object.entries(x.nodeOutputs||{}).map(([nodeId,r])=>{
+      const node=WF.nodes.find(n=>n.id===nodeId);
+      const label=node?NODE_META[node.type]?.label??node.type:nodeId;
+      const out=r.output?JSON.stringify(r.output).slice(0,160):'';
+      return `<div class="exec-step"><span class="dot" style="background:${r.status==='success'?'#34d399':r.status==='waiting'?'#fb923c':'#fb7185'}"></span>
+        <div><b>${esc(label)}</b> ${r.latencyMs?`<span style="color:var(--muted)">(${r.latencyMs}ms)</span>`:''}
+        <div style="color:var(--muted)">${esc(r.error||out)}</div></div></div>`;
+    }).join('');
+    return `<div class="agent-card">
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
+        <span class="dot" style="width:11px;height:11px;border-radius:50%;background:${dot[x.status]||'#94a3b8'}"></span>
+        <b>${x.status}</b><span style="color:var(--muted);font-size:.78rem">${new Date(x.startedAt).toLocaleString('es-CO')}</span>
+        ${x.error?`<span style="color:var(--danger);font-size:.78rem">${esc(x.error)}</span>`:''}
+      </div>${steps||'<span style="color:var(--muted);font-size:.8rem">Sin pasos registrados</span>'}
+    </div>`;
+  }).join(''):'<p class="empty">Sin ejecuciones aún.</p>');
+}
+
+// ================= Human Review =================
+async function loadReviewQueue(status){
+  if(!TOKEN){ document.getElementById('reviewList').innerHTML='<p class="empty">Inicia sesión.</p>'; return; }
+  const rows=await api('/review/queue?status='+status);
+  document.getElementById('reviewList').innerHTML=rows.length?rows.map(r=>`
+    <div class="review-card" id="rev-${r.id}">
+      <div class="meta">
+        <span class="badge">${esc(r.channel||'—')}</span>
+        <span class="badge ${r.status==='PENDING'?'':'off'}">${r.status}</span>
+        <span>${new Date(r.createdAt).toLocaleString('es-CO')}</span>
+        ${r.reviewedBy?`<span>revisó: ${esc(r.reviewedBy)}</span>`:''}
+      </div>
+      <label style="font-size:.7rem;color:var(--muted)">Mensaje / input</label>
+      <div class="msg-in">${esc(r.inputSummary)}</div>
+      <label style="font-size:.7rem;color:var(--muted)">${r.status==='PENDING'?'Respuesta sugerida (editable)':'Respuesta'}</label>
+      ${r.status==='PENDING'
+        ?`<textarea id="revtx-${r.id}" style="width:100%;min-height:90px;font:inherit;font-size:.84rem;padding:10px;border-radius:10px;border:1px solid rgba(148,163,184,.2);background:#0a0e0b;color:var(--ink)">${esc(r.suggestedOutput)}</textarea>
+          <div class="row-actions">
+            <button class="btn small" onclick="reviewAction('${r.id}','approve')">Aprobar</button>
+            <button class="btn small" onclick="reviewEditApprove('${r.id}')">Aprobar con edición</button>
+            <button class="btn danger small" onclick="reviewReject('${r.id}')">Rechazar</button>
+            <button class="btn ghost small" onclick="reviewAction('${r.id}','escalate')">Escalar</button>
+          </div>`
+        :`<div class="msg-out">${esc(r.finalOutput??r.suggestedOutput)}</div>
+          ${r.learningNote?`<div style="font-size:.78rem;color:var(--lime)">📚 ${esc(r.learningNote)}</div>`:`
+          <div class="row-actions">
+            <input id="note-${r.id}" placeholder="Nota de aprendizaje para el agente" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid rgba(148,163,184,.2);background:#0a0e0b;color:var(--ink);font-size:.8rem"/>
+            <button class="btn ghost small" onclick="saveLearningNote('${r.id}')">Guardar aprendizaje</button>
+          </div>`}`}
+    </div>`).join('')
+  :'<p class="empty">Nada en esta bandeja.</p>';
+}
+async function reviewAction(id,action){
+  try{ await api('/review/'+id+'/'+action,{method:'POST',body:'{}'}); loadReviewQueue('PENDING'); }
+  catch(e){ alert('Error: '+e.message); }
+}
+async function reviewEditApprove(id){
+  const finalOutput=document.getElementById('revtx-'+id).value.trim();
+  try{ await api('/review/'+id+'/edit-and-approve',{method:'POST',body:JSON.stringify({finalOutput})}); loadReviewQueue('PENDING'); }
+  catch(e){ alert('Error: '+e.message); }
+}
+async function reviewReject(id){
+  const reason=prompt('Motivo del rechazo (queda como aprendizaje):')||undefined;
+  try{ await api('/review/'+id+'/reject',{method:'POST',body:JSON.stringify({reason})}); loadReviewQueue('PENDING'); }
+  catch(e){ alert('Error: '+e.message); }
+}
+async function saveLearningNote(id){
+  const note=document.getElementById('note-'+id).value.trim();
+  if(!note) return;
+  try{ await api('/review/'+id+'/save-learning',{method:'POST',body:JSON.stringify({note})}); alert('Guardado.'); }
+  catch(e){ alert('Error: '+e.message); }
+}
+
+// ================= Learning Loops =================
+async function loadLearning(){
+  if(!TOKEN){ document.getElementById('proposalList').innerHTML='<p class="empty">Inicia sesión.</p>'; return; }
+  await ensureAgentsCache();
+  document.getElementById('loopAgent').innerHTML=MY_AGENTS_CACHE.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join('')||'<option value="">Sin agentes</option>';
+  renderProposals(await api('/learning/proposals'));
+}
+function renderProposals(rows){
+  document.getElementById('proposalList').innerHTML=rows.length?rows.map(p=>`
+    <div class="review-card">
+      <div class="meta">
+        <span class="badge ${p.status==='PENDING'?'':'off'}">${p.status}</span>
+        <span>${new Date(p.createdAt).toLocaleString('es-CO')}</span>
+        ${p.decidedBy?`<span>decidió: ${esc(p.decidedBy)}</span>`:''}
+      </div>
+      <div style="font-weight:800;margin-bottom:6px">${esc(p.title)}</div>
+      <div style="font-size:.8rem;color:var(--muted);margin-bottom:8px">${esc(p.reason)}</div>
+      <div class="msg-out" style="font-family:Consolas,monospace;font-size:.78rem">${esc(p.proposedValue)}</div>
+      ${p.status==='PENDING'?`<div class="row-actions">
+        <button class="btn small" onclick="decideProposal('${p.id}','approve')">Aprobar (se agrega como skill .md)</button>
+        <button class="btn danger small" onclick="decideProposal('${p.id}','reject')">Rechazar</button>
+      </div>`:''}
+    </div>`).join('')
+  :'<p class="empty">Sin propuestas. Corre el análisis después de aprobar/editar/rechazar respuestas en Revisión.</p>';
+}
+async function runLoop(){
+  const agentId=document.getElementById('loopAgent').value;
+  if(!agentId){ alert('Activa un agente primero.'); return; }
+  try{
+    const r=await api('/learning/agents/'+agentId+'/run',{method:'POST',body:'{}'});
+    alert(r.message+`\n(analizadas: ${r.analyzed.edited} editadas, ${r.analyzed.rejected} rechazadas, ${r.analyzed.learningNotes} notas)`);
+    renderProposals(await api('/learning/proposals'));
+  }catch(e){ alert('Error: '+e.message); }
+}
+async function decideProposal(id,action){
+  try{ await api('/learning/proposals/'+id+'/'+action,{method:'POST',body:'{}'}); renderProposals(await api('/learning/proposals')); MY_AGENTS_CACHE=[]; }
+  catch(e){ alert('Error: '+e.message); }
 }
 
 (async function init(){
