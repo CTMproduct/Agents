@@ -420,6 +420,7 @@ model AutomationWorkflow {
   edges         Json // [{id, source, target}]
   version       Int            @default(1)
   publicId      String?        @unique // para POST /automations/webhook/:publicId
+  webhookSecret String? // si esta definido, el webhook exige header x-webhook-secret
   lastRunAt     DateTime?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
@@ -476,6 +477,18 @@ model PendingReview {
   updatedAt     DateTime     @updatedAt
 
   @@index([tenantId, status, createdAt])
+}
+
+// Versionado de prompts: cada cambio al skillMd principal guarda la version anterior.
+model TenantAgentPromptVersion {
+  id            String   @id @default(cuid())
+  tenantAgentId String
+  version       Int
+  skillMd       String
+  changedBy     String?
+  createdAt     DateTime @default(now())
+
+  @@index([tenantAgentId, version])
 }
 
 // ---------- Learning Loops: propuestas de mejora (nunca cambian el prompt solas) ----------

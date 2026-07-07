@@ -5,10 +5,11 @@ import { AutomationsController } from './automations.controller';
 import { ReviewController } from './review.controller';
 import { LearningLoopService } from './learning-loop.service';
 import { LearningController } from './learning.controller';
+import { DecisionMetricsController } from './decision-metrics.controller';
 
 @Module({
   imports: [AgentsModule],
   providers: [WorkflowEngineService, LearningLoopService],
-  controllers: [AutomationsController, ReviewController, LearningController],
+  controllers: [AutomationsController, ReviewController, LearningController, DecisionMetricsController],
 })
 export class AutomationsModule {}

@@ -76,6 +76,49 @@ export class MarketplaceController {
     return this.tools.listMarketplacePublic();
   }
 
+  /**
+   * Agent Studio guiado: el usuario responde preguntas simples y la plataforma
+   * genera el skillMd profesional. El usuario nunca tiene que escribir un prompt.
+   * maxTokens acotado para optimizar costo.
+   */
+  @Post('generate-skill')
+  @UseGuards(AuthGuard)
+  async generateSkill(
+    @CurrentUser() user: JwtPayload,
+    @Body() body: { answers: Record<string, string> },
+  ) {
+    if (!user.tenantId) throw new ForbiddenException('Tu cuenta no pertenece a ninguna empresa');
+    const a = body?.answers ?? {};
+    if (!a.queHace?.trim()) throw new BadRequestException('Describe al menos qué hace el agente (queHace)');
+
+    const resp = await this.llm.generateStructured({
+      system:
+        'Eres un experto en diseno de agentes de IA comerciales. A partir de las respuestas del usuario, ' +
+        'genera un skill en markdown, en espanol, corto y accionable (max 25 lineas), con secciones: ' +
+        '# Rol, # Instrucciones, # Nunca hagas, # Cuando escalar a humano. ' +
+        'Incluye SIEMPRE la regla de no inventar precios ni prometer nada sin validacion humana.',
+      user: [
+        `Que hace el agente: ${a.queHace}`,
+        a.tono ? `Tono: ${a.tono}` : '',
+        a.puedeProometer || a.puedePrometer ? `Puede prometer: ${a.puedePrometer ?? a.puedeProometer}` : '',
+        a.noPuedePrometer ? `NO puede prometer: ${a.noPuedePrometer}` : '',
+        a.cuandoEscalar ? `Cuando escalar a humano: ${a.cuandoEscalar}` : '',
+        a.reglas ? `Reglas de la empresa: ${a.reglas}` : '',
+      ].filter(Boolean).join('\n'),
+      toolName: 'registrar_skill',
+      toolDescription: 'Registra el skill generado.',
+      inputSchema: {
+        type: 'object',
+        properties: { skillMd: { type: 'string', description: 'Skill completo en markdown' } },
+        required: ['skillMd'],
+      },
+      maxTokens: 900,
+    });
+    const skillMd = (resp.json as { skillMd?: string })?.skillMd;
+    if (!skillMd) throw new BadRequestException('No se pudo generar el skill, intenta de nuevo');
+    return { skillMd };
+  }
+
   /** LLMs a los que un agente puede conectarse (solo proveedores con key configurada). */
   @Get('models')
   listModels() {
@@ -148,6 +191,14 @@ export class MarketplaceController {
     @Body() body: { name?: string; skillMd?: string; toolKeys?: string[]; modelName?: string | null; active?: boolean },
   ) {
     const agent = await this.ownAgent(id, user);
+
+    // Versionado de prompts: si cambia el skillMd, la version anterior queda guardada.
+    if (body.skillMd !== undefined && body.skillMd !== agent.skillMd) {
+      const count = await this.prisma.tenantAgentPromptVersion.count({ where: { tenantAgentId: agent.id } });
+      await this.prisma.tenantAgentPromptVersion.create({
+        data: { tenantAgentId: agent.id, version: count + 1, skillMd: agent.skillMd, changedBy: user.email },
+      });
+    }
 
     let modelName: string | null | undefined = undefined;
     if (body.modelName !== undefined) {

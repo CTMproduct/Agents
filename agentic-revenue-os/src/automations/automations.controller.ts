@@ -5,10 +5,12 @@ import {
   Delete,
   ForbiddenException,
   Get,
+  Headers,
   NotFoundException,
   Param,
   Patch,
   Post,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { Prisma, WorkflowStatus } from '@prisma/client';
@@ -112,7 +114,7 @@ export class AutomationsController {
   async update(
     @Param('id') id: string,
     @CurrentUser() user: JwtPayload,
-    @Body() body: { name?: string; description?: string; tenantAgentId?: string | null; nodes?: WorkflowNode[]; edges?: WorkflowEdge[]; status?: string },
+    @Body() body: { name?: string; description?: string; tenantAgentId?: string | null; nodes?: WorkflowNode[]; edges?: WorkflowEdge[]; status?: string; webhookSecret?: string | null },
   ) {
     const tenantId = this.tenantOf(user);
     const wf = await this.prisma.automationWorkflow.findFirst({ where: { id, tenantId } });
@@ -137,6 +139,7 @@ export class AutomationsController {
         nodes: body.nodes ? (body.nodes as unknown as Prisma.InputJsonValue) : undefined,
         edges: body.edges ? (body.edges as unknown as Prisma.InputJsonValue) : undefined,
         status: (body.status as WorkflowStatus) ?? undefined,
+        webhookSecret: body.webhookSecret === undefined ? undefined : body.webhookSecret || null,
         triggerType,
         publicId,
         version: body.nodes ? { increment: 1 } : undefined,
@@ -185,9 +188,17 @@ export class AutomationsController {
    * Si el flujo termina de forma sincrona con webhook.response, devuelve ese texto.
    */
   @Post('webhook/:publicId')
-  async webhook(@Param('publicId') publicId: string, @Body() payload: Record<string, unknown>) {
+  async webhook(
+    @Param('publicId') publicId: string,
+    @Body() payload: Record<string, unknown>,
+    @Headers('x-webhook-secret') secret?: string,
+  ) {
     const wf = await this.prisma.automationWorkflow.findUnique({ where: { publicId } });
     if (!wf || wf.status !== WorkflowStatus.ACTIVE) throw new NotFoundException('Webhook no disponible');
+    // Capa extra opcional sobre el publicId no adivinable: secreto compartido por header.
+    if (wf.webhookSecret && secret !== wf.webhookSecret) {
+      throw new UnauthorizedException('x-webhook-secret invalido');
+    }
     const { executionId } = await this.engine.execute(wf.id, wf.tenantId, payload ?? {});
     const execution = await this.prisma.automationExecution.findUnique({ where: { id: executionId } });
     return {

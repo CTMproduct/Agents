@@ -135,6 +135,7 @@
     <button id="nav-automations" onclick="showView('automations')">Automatizaciones</button>
     <button id="nav-review" onclick="showView('review')">Revisión</button>
     <button id="nav-learning" onclick="showView('learning')">Aprendizaje</button>
+    <button id="nav-metrics" onclick="showView('metrics')">Métricas</button>
     <button id="nav-admin" class="hidden" onclick="showView('admin')">Admin</button>
   </nav>
   <div class="right" id="authArea"></div>
@@ -215,6 +216,12 @@
     <div id="reviewList"></div>
   </section>
 
+  <section id="view-metrics" class="hidden">
+    <h1 class="hero">Decision <span>Intelligence</span></h1>
+    <p class="sub">Cada agente con su Autonomy Readiness Score y una recomendación accionable: ¿sirve, lo aprueban, lo editan mucho, está listo para más autonomía?</p>
+    <div id="metricsList"></div>
+  </section>
+
   <section id="view-learning" class="hidden">
     <h1 class="hero">Learning <span>Loops</span></h1>
     <p class="sub">El agente analiza lo que editaste y rechazaste, y propone mejoras a su skill. Nada cambia sin tu aprobación: cada propuesta se aplica como un skill .md nuevo solo si la apruebas.</p>
@@ -243,7 +250,7 @@ async function api(path, opts={}){
 }
 
 function showView(name){
-  ['catalog','dashboard','admin','automations','review','learning'].forEach(v=>{
+  ['catalog','dashboard','admin','automations','review','learning','metrics'].forEach(v=>{
     document.getElementById('view-'+v).classList.toggle('hidden', v!==name);
     document.getElementById('nav-'+v).classList.toggle('active', v===name);
   });
@@ -252,6 +259,69 @@ function showView(name){
   if(name==='automations') loadWorkflows();
   if(name==='review') loadReviewQueue('PENDING');
   if(name==='learning') loadLearning();
+  if(name==='metrics') loadDecisionMetrics();
+}
+
+async function loadDecisionMetrics(){
+  const list=document.getElementById('metricsList');
+  if(!TOKEN){ list.innerHTML='<p class="empty">Inicia sesión.</p>'; return; }
+  const m=await api('/metrics/decision');
+  list.innerHTML=m.agents.length?m.agents.map(a=>`
+    <div class="review-card">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+        <b style="color:var(--lime)">${esc(a.agentName)}</b>
+        <span class="badge">${esc(a.modelName||'modelo por defecto')}</span>
+        ${a.autonomyReadiness!=null?`<span class="badge" style="background:rgba(199,224,78,.15);color:var(--lime)">Autonomy Readiness: ${a.autonomyReadiness}/100</span>`:'<span class="badge off">sin datos suficientes</span>'}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;font-size:.8rem;margin-bottom:10px">
+        <div>Revisadas<br/><b>${a.reviewed}</b> (${a.pending} pend.)</div>
+        <div>Aprobación<br/><b>${a.approvalRatePct!=null?a.approvalRatePct+'%':'—'}</b></div>
+        <div>Edición<br/><b>${a.editRatePct!=null?a.editRatePct+'%':'—'}</b></div>
+        <div>Corridas<br/><b>${a.runs}</b></div>
+        <div>Costo<br/><b>$${a.costUsd}</b>${a.costPerRunUsd!=null?` ($${a.costPerRunUsd}/run)`:''}</div>
+        <div>Latencia<br/><b>${a.avgLatencyMs!=null?(a.avgLatencyMs/1000).toFixed(1)+'s':'—'}</b></div>
+      </div>
+      <div class="msg-out" style="font-size:.82rem">💡 ${esc(a.recommendation)}</div>
+    </div>`).join('')
+  :'<p class="empty">Activa un agente para ver sus métricas.</p>';
+}
+
+// Asistente guiado: preguntas simples -> la plataforma genera el skillMd.
+function openSkillWizard(agentId){
+  const wrap=document.createElement('div');
+  wrap.className='overlay';
+  wrap.innerHTML=`<div class="modal wide">
+    <button class="close" onclick="this.closest('.overlay').remove()">✕</button>
+    <h2>Asistente de configuración</h2>
+    <p style="font-size:.8rem;color:var(--muted)">Responde en lenguaje normal. La plataforma escribirá las instrucciones profesionales por ti.</p>
+    <label>¿Qué hace este agente?</label><input id="wz-queHace" placeholder="Ej. Responde solicitudes de cotización de viajes"/>
+    <label>¿Qué tono debe usar?</label><input id="wz-tono" placeholder="Ej. Cercano y profesional, español colombiano"/>
+    <label>¿Qué puede prometer?</label><input id="wz-puede" placeholder="Ej. Respuesta de un asesor en menos de 2 horas"/>
+    <label>¿Qué NO puede prometer?</label><input id="wz-noPuede" placeholder="Ej. Precios, descuentos, disponibilidad"/>
+    <label>¿Cuándo debe escalar a un humano?</label><input id="wz-escalar" placeholder="Ej. Quejas, pagos, cliente molesto"/>
+    <label>Reglas de tu empresa (opcional)</label><input id="wz-reglas" placeholder="Ej. Siempre mencionar la prueba gratis de 14 días"/>
+    <div class="err" id="wzErr"></div>
+    <div class="foot"><button class="btn" onclick="runSkillWizard('${agentId}')">Generar instrucciones profesionales</button></div>
+  </div>`;
+  document.body.appendChild(wrap);
+}
+async function runSkillWizard(agentId){
+  const answers={
+    queHace:document.getElementById('wz-queHace').value.trim(),
+    tono:document.getElementById('wz-tono').value.trim(),
+    puedePrometer:document.getElementById('wz-puede').value.trim(),
+    noPuedePrometer:document.getElementById('wz-noPuede').value.trim(),
+    cuandoEscalar:document.getElementById('wz-escalar').value.trim(),
+    reglas:document.getElementById('wz-reglas').value.trim(),
+  };
+  const err=document.getElementById('wzErr');
+  err.textContent='Generando…';
+  try{
+    const r=await api('/marketplace/generate-skill',{method:'POST',body:JSON.stringify({answers})});
+    document.getElementById('skill-'+agentId).value=r.skillMd;
+    document.querySelector('.overlay')?.remove();
+    alert('Instrucciones generadas. Revísalas y pulsa "Guardar cambios" para aplicarlas (la versión anterior queda guardada).');
+  }catch(e){ err.textContent=e.message; }
 }
 
 function renderAuthArea(){
@@ -428,6 +498,7 @@ async function loadMyAgents(){
       </select>
 
       <label style="font-size:.75rem;color:var(--muted)">Skill principal (markdown)</label>
+      <div class="row-actions" style="margin:4px 0 6px"><button class="btn ghost small" onclick="openSkillWizard('${a.id}')">🪄 Asistente: generar instrucciones respondiendo preguntas</button></div>
       <textarea id="skill-${a.id}">${esc(a.skillMd)}</textarea>
 
       <label style="font-size:.75rem;color:var(--muted);display:block;margin-top:10px">Skills adicionales (.md) — se agregan al prompt en orden</label>
