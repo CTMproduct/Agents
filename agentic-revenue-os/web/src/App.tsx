@@ -2,6 +2,7 @@ import { useEffect, useState, createContext, useContext } from 'react';
 import { HashRouter, Routes, Route, NavLink, Navigate, useNavigate } from 'react-router-dom';
 import { api, getToken, setToken, setUnauthorizedHandler } from './api';
 import { Dashboard, Marketplace, Agents, Review, Learning, Metrics, Security } from './pages';
+import { Arena } from './arena/ArenaPage';
 
 export interface Me { id: string; email: string; role: string; tenant: { id: string; name: string } | null }
 const MeCtx = createContext<Me | null>(null);
@@ -46,7 +47,7 @@ function Login({ onAuth }: { onAuth: () => void }) {
 function Shell({ me, onLogout }: { me: Me; onLogout: () => void }) {
   const links: Array<[string, string]> = [
     ['/dashboard', 'Dashboard'], ['/marketplace', 'Marketplace'], ['/agents', 'Mis Agentes'],
-    ['/review', 'Human Review'], ['/learning', 'Aprendizaje'], ['/metrics', 'Métricas'],
+    ['/review', 'Human Review'], ['/learning', 'Aprendizaje'], ['/metrics', 'Métricas'], ['/arena', 'Arena ⚔️'],
   ];
   if (me.role === 'TENANT_ADMIN') links.push(['/security', 'Seguridad']);
   return (
@@ -72,6 +73,7 @@ function Shell({ me, onLogout }: { me: Me; onLogout: () => void }) {
             <Route path="/learning" element={<Learning />} />
             <Route path="/metrics" element={<Metrics />} />
             <Route path="/security" element={<Security />} />
+            <Route path="/arena" element={<Arena />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </main>

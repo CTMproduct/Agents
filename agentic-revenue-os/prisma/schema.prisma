@@ -565,3 +565,93 @@ model AgentSkillProposal {
 
   @@index([tenantId, status])
 }
+// -----------------------------------------------------------------------------
+// AGENTIC ARENA MODULE
+// Añadir al final de prisma/schema.prisma.
+// No toca tablas existentes; referencia TenantAgent de forma lógica por agentId.
+// -----------------------------------------------------------------------------
+
+enum ArenaBattleStatus {
+  PENDING
+  RESOLVED
+  FAILED
+  CANCELLED
+}
+
+enum ArenaTaskType {
+  PACKAGE_ASSEMBLY
+  PROMPT_EVALUATION
+  HUMAN_REVIEW
+  CUSTOM
+}
+
+model AgentProfile {
+  id        String   @id @default(uuid())
+  tenantId  String
+  agentId   String   // Referencia lógica a TenantAgent.id
+  alias     String
+  avatarUrl String   @default("https://models.readyplayer.me/64bfa15f0e72c63d7c3934a6.glb")
+
+  level  Int @default(1)
+  xp     Int @default(0)
+  elo    Int @default(1000)
+  wins   Int @default(0)
+  losses Int @default(0)
+  draws  Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  battles BattleParticipant[]
+
+  @@unique([tenantId, agentId])
+  @@index([tenantId])
+  @@index([tenantId, elo])
+}
+
+model Battle {
+  id        String            @id @default(uuid())
+  tenantId  String
+  taskType  ArenaTaskType     @default(PACKAGE_ASSEMBLY)
+  status    ArenaBattleStatus @default(PENDING)
+
+  winnerParticipantId String?
+  createdByUserId     String?
+  promptHash          String?
+
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  participants BattleParticipant[]
+
+  @@index([tenantId, status, createdAt])
+}
+
+model BattleParticipant {
+  id        String @id @default(uuid())
+  battleId  String
+  profileId String
+
+  // Snapshots para auditoría aunque el agente/perfil cambie después
+  agentIdSnapshot String
+  aliasSnapshot   String
+  modelSnapshot   String
+
+  outputData   Json?
+  errorMessage String?
+
+  inputTokens  Int     @default(0)
+  outputTokens Int     @default(0)
+  tokenCost    Decimal @default(0)
+  latencyMs    Int     @default(0)
+
+  approved Boolean?
+
+  createdAt DateTime @default(now())
+
+  battle  Battle       @relation(fields: [battleId], references: [id], onDelete: Cascade)
+  profile AgentProfile @relation(fields: [profileId], references: [id], onDelete: Restrict)
+
+  @@unique([battleId, profileId])
+  @@index([profileId])
+}

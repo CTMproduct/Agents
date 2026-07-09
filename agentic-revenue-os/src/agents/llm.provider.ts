@@ -10,6 +10,8 @@ export interface LlmStructuredRequest {
   toolDescription: string;
   inputSchema: Record<string, unknown>; // JSON Schema
   maxTokens?: number;
+  /** LLM especifico del agente. null/undefined = default de la plataforma. */
+  model?: string | null;
 }
 
 export interface LlmStructuredResponse {
@@ -98,8 +100,10 @@ export class LlmProvider {
   }
 
   async generateStructured(req: LlmStructuredRequest): Promise<LlmStructuredResponse> {
-    if (this.providerName === 'anthropic') return this.viaAnthropic(req);
-    return this.viaOpenAi(req);
+    const { provider, model } = this.resolveModel(req.model);
+    const effective = { ...req, model };
+    if (provider === 'anthropic') return this.viaAnthropic(effective);
+    return this.viaOpenAi(effective);
   }
 
   /**
@@ -247,7 +251,7 @@ export class LlmProvider {
     if (!this.anthropic) {
       this.anthropic = new Anthropic({ apiKey: this.config.get<string>('ANTHROPIC_API_KEY') });
     }
-    const model = this.config.get<string>('ANTHROPIC_MODEL') ?? 'claude-sonnet-5';
+    const model = req.model ?? this.config.get<string>('ANTHROPIC_MODEL') ?? 'claude-sonnet-5';
     const started = Date.now();
     const resp = await this.anthropic.messages.create({
       model,
@@ -284,7 +288,7 @@ export class LlmProvider {
       if (!apiKey) throw new Error('Falta ANTHROPIC_API_KEY u OPENAI_API_KEY en .env');
       this.openai = new OpenAI({ apiKey });
     }
-    const model = this.config.get<string>('OPENAI_MODEL') ?? 'gpt-4o-mini';
+    const model = req.model ?? this.config.get<string>('OPENAI_MODEL') ?? 'gpt-4o-mini';
     const started = Date.now();
     const resp = await this.openai.chat.completions.create({
       model,
