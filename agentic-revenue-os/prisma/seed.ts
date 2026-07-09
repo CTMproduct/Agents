@@ -140,12 +140,20 @@ async function main() {
   const adminPassword = process.env.PLATFORM_ADMIN_PASSWORD;
   if (adminEmail && adminPassword) {
     const passwordHash = await bcrypt.hash(adminPassword, 10);
+    // El admin de plataforma tambien opera como una empresa propia (CTM es a la
+    // vez el operador y un tenant que usa sus agentes). Sin un tenant no podria
+    // activar/editar agentes, porque esos recursos son tenant-scoped.
+    const adminTenant = await prisma.tenant.upsert({
+      where: { slug: 'ctm-en-linea' },
+      update: {},
+      create: { name: 'CTM En Línea', slug: 'ctm-en-linea' },
+    });
     await prisma.user.upsert({
       where: { email: adminEmail },
-      update: { passwordHash, role: UserRole.PLATFORM_ADMIN },
-      create: { email: adminEmail, passwordHash, role: UserRole.PLATFORM_ADMIN },
+      update: { passwordHash, role: UserRole.PLATFORM_ADMIN, tenantId: adminTenant.id },
+      create: { email: adminEmail, passwordHash, role: UserRole.PLATFORM_ADMIN, tenantId: adminTenant.id },
     });
-    console.log(`Admin de plataforma listo: ${adminEmail}`);
+    console.log(`Admin de plataforma listo: ${adminEmail} (empresa: ${adminTenant.name})`);
   } else {
     console.log('PLATFORM_ADMIN_EMAIL/PLATFORM_ADMIN_PASSWORD no definidos: sin admin de plataforma creado.');
   }

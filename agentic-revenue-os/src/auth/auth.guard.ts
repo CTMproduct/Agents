@@ -32,7 +32,11 @@ export class AuthGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
-    if (requiredRoles?.length && !requiredRoles.includes(payload.role)) {
+    // El PLATFORM_ADMIN (tu cuenta) es superusuario: pasa cualquier @Roles.
+    // Igual opera sobre su propio tenant para los recursos tenant-scoped
+    // (el seed le asigna una empresa), asi que la data sigue aislada.
+    const isPlatformAdmin = payload.role === UserRole.PLATFORM_ADMIN;
+    if (requiredRoles?.length && !isPlatformAdmin && !requiredRoles.includes(payload.role)) {
       throw new UnauthorizedException('No tienes permiso para este recurso');
     }
     return true;

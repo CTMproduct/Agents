@@ -49,7 +49,7 @@ function Shell({ me, onLogout }: { me: Me; onLogout: () => void }) {
     ['/dashboard', 'Dashboard'], ['/marketplace', 'Marketplace'], ['/agents', 'Mis Agentes'],
     ['/review', 'Human Review'], ['/learning', 'Aprendizaje'], ['/metrics', 'Métricas'], ['/arena', 'Arena ⚔️'],
   ];
-  if (me.role === 'TENANT_ADMIN') links.push(['/security', 'Seguridad']);
+  if (me.role === 'TENANT_ADMIN' || me.role === 'PLATFORM_ADMIN') links.push(['/security', 'Seguridad']);
   return (
     <MeCtx.Provider value={me}>
       <div className="layout">
