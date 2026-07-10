@@ -2,7 +2,7 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "RAILPACK",
-    "buildCommand": "if [ -d backend ] && [ -d frontend ]; then npm ci --prefix backend && npm ci --prefix frontend && npm run build --prefix frontend; elif [ -f src/index.js ]; then npm ci; else npm ci && npm run build; fi"
+    "buildCommand": "if [ -d backend ] && [ -d frontend ]; then npm install --prefix backend && npm install --prefix frontend && npm run build --prefix frontend; elif [ -f src/index.js ]; then npm install; else npm install && npm run build; fi"
   },
   "deploy": {
     "startCommand": "if [ -d backend ] && [ -d frontend ]; then npm run start --prefix backend; else npm start; fi",
