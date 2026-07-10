@@ -43,16 +43,13 @@ Si Railway crea una variable `DATABASE_URL` automaticamente, no es necesario agr
 
 ## 4. Construccion e inicio
 
-Railway ejecuta:
+Railway puede ejecutar este repositorio desde la raiz, desde `/backend` o desde `/frontend`. El archivo `railway.json` detecta automaticamente la ubicacion:
 
-```text
-npm ci --prefix backend
-npm ci --prefix frontend
-npm run build --prefix frontend
-npm run start --prefix backend
-```
+- En `/`, compila frontend y backend como una aplicacion monolitica.
+- En `/backend`, instala e inicia solo la API.
+- En `/frontend`, compila e inicia el sitio estatico.
 
-El chequeo de salud es `GET /health`.
+Para una instalacion nueva se recomienda un unico servicio con Root Directory `/`.
 
 ## 5. Verificacion posterior
 

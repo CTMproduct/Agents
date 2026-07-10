@@ -2,10 +2,10 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "RAILPACK",
-    "buildCommand": "npm ci --prefix backend && npm ci --prefix frontend && npm run build --prefix frontend"
+    "buildCommand": "if [ -d backend ] && [ -d frontend ]; then npm ci --prefix backend && npm ci --prefix frontend && npm run build --prefix frontend; elif [ -f src/index.js ]; then npm ci; else npm ci && npm run build; fi"
   },
   "deploy": {
-    "startCommand": "npm run start --prefix backend",
+    "startCommand": "if [ -d backend ] && [ -d frontend ]; then npm run start --prefix backend; else npm start; fi",
     "restartPolicyType": "always",
     "restartPolicyMaxRetries": 5,
     "healthcheckPath": "/health"
