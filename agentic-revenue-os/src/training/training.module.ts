@@ -1,0 +1,13 @@
+import { Module } from '@nestjs/common';
+import { AgentsModule } from '../agents/agents.module';
+import { MemoryService } from './memory.service';
+import { TrainingService } from './training.service';
+import { TrainingController } from './training.controller';
+
+@Module({
+  imports: [AgentsModule], // aporta LlmProvider (chat + embed, stubbeable en tests)
+  controllers: [TrainingController],
+  providers: [MemoryService, TrainingService],
+  exports: [MemoryService, TrainingService],
+})
+export class TrainingModule {}

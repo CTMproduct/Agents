@@ -345,6 +345,12 @@ model TenantAgent {
   skills    TenantAgentSkill[]
   knowledge TenantAgentKnowledge[]
 
+  // Training Camp: memoria cognitiva, sesiones de practica, heroe y skills de arbol.
+  memories         AgentMemory[]
+  trainingSessions TrainingSession[]
+  hero             TenantAgentHero?
+  unlockedSkills   AgentSkill[]
+
   @@index([tenantId])
 }
 
@@ -523,6 +529,14 @@ model AgentDailyMetric {
   outputTokens  Int      @default(0)
   costUsd       Decimal  @default(0) @db.Decimal(12, 6)
   avgLatencyMs  Int      @default(0)
+
+  // Metricas de negocio (Impact Dashboard): el C-Level no entiende tokens, entiende ROI.
+  conversations     Int     @default(0)
+  hallucinations    Int     @default(0) // errores criticos marcados por humano
+  revenueAttributed Decimal @default(0) @db.Decimal(14, 2) // ROI verificado por humano
+  churnPrevented    Int     @default(0)
+  churnCaused       Int     @default(0)
+
   updatedAt     DateTime @updatedAt
 
   @@unique([tenantAgentId, date])
@@ -599,6 +613,12 @@ model AgentProfile {
   losses Int @default(0)
   draws  Int @default(0)
 
+  // Ranked estilo LoL: el ELO numerico se traduce a tier emocional (Hierro..Challenger).
+  tier             String  @default("IRON")
+  tierDivision     Int     @default(4) // IV(4) .. I(1)
+  streak           Int     @default(0) // racha de victorias (o negativa en derrotas)
+  revenueGenerated Decimal @default(0) @db.Decimal(14, 2) // ROI verificado por humano (denormalizado)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -636,6 +656,7 @@ model BattleParticipant {
   agentIdSnapshot String
   aliasSnapshot   String
   modelSnapshot   String
+  provider        String @default("unknown") // proveedor que resolvió la corrida (auditoría de fallback)
 
   outputData   Json?
   errorMessage String?
@@ -654,4 +675,133 @@ model BattleParticipant {
 
   @@unique([battleId, profileId])
   @@index([profileId])
+}
+
+// ==================== TRAINING CAMP: memoria cognitiva + entrenamiento ====================
+
+// Memoria de 4 capas (PROCEDURAL/DECLARATIVE/EPISODIC/WORKING). El embedding se
+// guarda como Float[] (384-dim, modelo local all-MiniLM-L6-v2) y el recall hace
+// cosine en la app. pgvector queda como indice futuro cuando la escala lo pida.
+model AgentMemory {
+  id             String      @id @default(cuid())
+  tenantId       String
+  tenantAgent    TenantAgent @relation(fields: [tenantAgentId], references: [id], onDelete: Cascade)
+  tenantAgentId  String
+  type           String // PROCEDURAL | DECLARATIVE | EPISODIC | WORKING
+  content        String
+  embedding      Float[]     @default([]) // vector semantico (384-dim). Vacio = aun sin embeber
+  importance     Float       @default(0.5) // 0..1: prioridad de retencion y recall
+  lastAccessedAt DateTime    @default(now())
+  expiresAt      DateTime? // solo WORKING memory
+  createdAt      DateTime    @default(now())
+
+  @@index([tenantAgentId, type])
+  @@index([tenantId])
+}
+
+// Practice Tool: el humano chatea con el agente en sandbox; si se equivoca, lo
+// corrige (coachFeedback) y esa leccion se vuelve una AgentMemory EPISODIC.
+model TrainingSession {
+  id            String      @id @default(cuid())
+  tenantId      String
+  tenantAgent   TenantAgent @relation(fields: [tenantAgentId], references: [id], onDelete: Cascade)
+  tenantAgentId String
+  prompt        String
+  response      String
+  coachFeedback String?
+  rating        Int? // 1..5
+  status        String      @default("PENDING") // PENDING | REVIEWED
+  xpEarned      Int         @default(0)
+  memoryId      String? // memoria episodica generada al hacer coaching
+  createdAt     DateTime    @default(now())
+
+  @@index([tenantAgentId, status])
+  @@index([tenantId])
+}
+
+// ==================== HEROES: catalogo global estilo LoL ====================
+
+// Desacopla el catalogo global (CTM) de la instancia por empresa: CTM actualiza
+// "Hunter" una vez y todos los clientes lo heredan.
+model HeroTemplate {
+  id         String   @id @default(cuid())
+  slug       String   @unique // "hunter", "executioner"
+  name       String
+  role       String // HUNTER | EXECUTIONER | GUARDIAN | ...
+  splashUrl  String   @default("") // arte 2D/3D para la UI
+  model3dUrl String   @default("") // .glb para el visor 3D
+  passive    String   @default("") // habilidad pasiva
+  ultimate   String   @default("") // habilidad R
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  skills    SkillNode[]
+  instances TenantAgentHero[]
+}
+
+// Arbol de maestrias del heroe (raiz -> Q/W/E/R). skillMd se inyecta al prompt
+// SOLO si el agente desbloqueo ese nodo (ahorra tokens, mantiene foco).
+model SkillNode {
+  id          String       @id @default(cuid())
+  hero        HeroTemplate @relation(fields: [heroId], references: [id], onDelete: Cascade)
+  heroId      String
+  parent      SkillNode?   @relation("SkillTree", fields: [parentId], references: [id])
+  parentId    String?
+  children    SkillNode[]  @relation("SkillTree")
+  code        String // "Q1", "W2", "R1"
+  name        String
+  abilitySlot String // PASSIVE | Q | W | E | R
+  skillMd     String // el prompt exacto que se inyecta al LLM
+  xpCost      Int          @default(100)
+
+  unlocks AgentSkill[]
+
+  @@index([heroId])
+}
+
+// Instancia del heroe para un agente concreto (por empresa).
+model TenantAgentHero {
+  id            String       @id @default(cuid())
+  tenantId      String
+  tenantAgent   TenantAgent  @relation(fields: [tenantAgentId], references: [id], onDelete: Cascade)
+  tenantAgentId String       @unique
+  hero          HeroTemplate @relation(fields: [heroId], references: [id])
+  heroId        String
+  activeSkinId  String?
+  createdAt     DateTime     @default(now())
+
+  @@index([tenantId])
+}
+
+// Habilidad del arbol desbloqueada por un agente. Distinto de TenantAgentSkill,
+// que son skills .md libres de los Learning Loops.
+model AgentSkill {
+  id            String      @id @default(cuid())
+  tenantId      String
+  tenantAgent   TenantAgent @relation(fields: [tenantAgentId], references: [id], onDelete: Cascade)
+  tenantAgentId String
+  skillNode     SkillNode   @relation(fields: [skillNodeId], references: [id], onDelete: Cascade)
+  skillNodeId   String
+  unlockedAt    DateTime    @default(now())
+
+  @@unique([tenantAgentId, skillNodeId])
+  @@index([tenantId])
+}
+
+// ==================== REVENUE ATTRIBUTION: ROI verificado por humano ====================
+
+// El agente propone; un humano verifica el trato ganado. Solo esto sube al ROI:
+// el LLM nunca inventa revenue (misma filosofia que el gate anti-cifras del CRM).
+model RevenueAttribution {
+  id            String   @id @default(cuid())
+  tenantId      String
+  tenantAgentId String
+  amountUsd     Decimal  @db.Decimal(14, 2)
+  source        String   @default("deal_won")
+  verifiedBy    String // userId del humano que verifico
+  verifiedAt    DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([tenantAgentId])
 }

@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 export interface LlmStructuredRequest {
@@ -17,6 +17,8 @@ export interface LlmStructuredRequest {
 export interface LlmStructuredResponse {
   json: unknown;
   modelName: string;
+  /** Proveedor que REALMENTE resolvió la llamada (puede diferir del pedido si hubo fallback). */
+  provider?: 'anthropic' | 'openai';
   inputTokens: number;
   outputTokens: number;
   latencyMs: number;
@@ -69,10 +71,21 @@ export interface AgenticResponse {
  */
 @Injectable()
 export class LlmProvider {
+  private readonly logger = new Logger(LlmProvider.name);
   private anthropic: Anthropic | null = null;
   private openai: OpenAI | null = null;
 
   constructor(private readonly config: ConfigService) {}
+
+  /**
+   * El otro proveedor disponible (con key configurada), o null si no lo hay.
+   * Base del fallback estilo OmniRoute: si el proveedor pedido cae, se reintenta
+   * en el otro con SU modelo por defecto (nunca un ID hardcodeado).
+   */
+  private otherAvailableProvider(current: 'anthropic' | 'openai'): 'anthropic' | 'openai' | null {
+    const other = current === 'anthropic' ? 'openai' : 'anthropic';
+    return this.availableProviders.includes(other) ? other : null;
+  }
 
   get providerName(): string {
     return this.config.get<string>('ANTHROPIC_API_KEY') ? 'anthropic' : 'openai';
@@ -101,9 +114,18 @@ export class LlmProvider {
 
   async generateStructured(req: LlmStructuredRequest): Promise<LlmStructuredResponse> {
     const { provider, model } = this.resolveModel(req.model);
-    const effective = { ...req, model };
-    if (provider === 'anthropic') return this.viaAnthropic(effective);
-    return this.viaOpenAi(effective);
+    try {
+      const effective = { ...req, model };
+      return provider === 'anthropic' ? await this.viaAnthropic(effective) : await this.viaOpenAi(effective);
+    } catch (err) {
+      // Fallback OmniRoute: si el proveedor pedido falla y hay otro con key, se reintenta ahí.
+      const fallback = this.otherAvailableProvider(provider);
+      if (!fallback) throw err;
+      const reason = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Falló ${provider} (${model ?? 'default'}): ${reason}. Fallback a ${fallback}.`);
+      const effective = { ...req, model: null }; // usa el modelo por defecto del proveedor de fallback
+      return fallback === 'anthropic' ? this.viaAnthropic(effective) : this.viaOpenAi(effective);
+    }
   }
 
   /**
@@ -275,6 +297,7 @@ export class LlmProvider {
     return {
       json: toolUse.input,
       modelName: model,
+      provider: 'anthropic',
       inputTokens: resp.usage.input_tokens,
       outputTokens: resp.usage.output_tokens,
       latencyMs,
@@ -317,9 +340,187 @@ export class LlmProvider {
     return {
       json: JSON.parse(call.function.arguments),
       modelName: model,
+      provider: 'openai',
       inputTokens: resp.usage?.prompt_tokens ?? 0,
       outputTokens: resp.usage?.completion_tokens ?? 0,
       latencyMs,
     };
   }
+
+  // ==================== Chat de texto libre (Practice Tool) ====================
+
+  /**
+   * Completado de texto sin herramientas: el agente responde en lenguaje natural.
+   * Usado por el sandbox de entrenamiento. Mismo fallback OmniRoute que el resto.
+   */
+  async chat(req: ChatRequest): Promise<ChatResponse> {
+    const { provider, model } = this.resolveModel(req.model);
+    try {
+      return provider === 'anthropic' ? await this.chatAnthropic({ ...req, model }) : await this.chatOpenAi({ ...req, model });
+    } catch (err) {
+      const fallback = this.otherAvailableProvider(provider);
+      if (!fallback) throw err;
+      const reason = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`chat falló ${provider} (${model ?? 'default'}): ${reason}. Fallback a ${fallback}.`);
+      return fallback === 'anthropic' ? this.chatAnthropic({ ...req, model: null }) : this.chatOpenAi({ ...req, model: null });
+    }
+  }
+
+  private async chatAnthropic(req: ChatRequest): Promise<ChatResponse> {
+    if (!this.anthropic) {
+      this.anthropic = new Anthropic({ apiKey: this.config.get<string>('ANTHROPIC_API_KEY') });
+    }
+    const model = req.model ?? this.config.get<string>('ANTHROPIC_MODEL') ?? 'claude-sonnet-5';
+    const started = Date.now();
+    const resp = await this.anthropic.messages.create({
+      model,
+      max_tokens: req.maxTokens ?? 1024,
+      system: req.system,
+      messages: [{ role: 'user', content: req.user }],
+    });
+    const latencyMs = Date.now() - started;
+    const text = resp.content
+      .filter((c) => c.type === 'text')
+      .map((c) => (c as { text: string }).text)
+      .join('\n')
+      .trim();
+    return { text, modelName: model, provider: 'anthropic', inputTokens: resp.usage.input_tokens, outputTokens: resp.usage.output_tokens, latencyMs };
+  }
+
+  private async chatOpenAi(req: ChatRequest): Promise<ChatResponse> {
+    if (!this.openai) {
+      const apiKey = this.config.get<string>('OPENAI_API_KEY');
+      if (!apiKey) throw new Error('Falta ANTHROPIC_API_KEY u OPENAI_API_KEY en .env');
+      this.openai = new OpenAI({ apiKey });
+    }
+    const model = req.model ?? this.config.get<string>('OPENAI_MODEL') ?? 'gpt-4o-mini';
+    const started = Date.now();
+    const resp = await this.openai.chat.completions.create({
+      model,
+      max_tokens: req.maxTokens ?? 1024,
+      messages: [
+        { role: 'system', content: req.system },
+        { role: 'user', content: req.user },
+      ],
+    });
+    const latencyMs = Date.now() - started;
+    const text = (resp.choices[0]?.message?.content ?? '').trim();
+    return { text, modelName: model, provider: 'openai', inputTokens: resp.usage?.prompt_tokens ?? 0, outputTokens: resp.usage?.completion_tokens ?? 0, latencyMs };
+  }
+
+  // ==================== Embeddings (memoria semantica) ====================
+
+  private readonly embedDim = 384;
+
+  /**
+   * Proveedor de embeddings, elegido por env EMBEDDINGS_PROVIDER:
+   *   local (default) | openai | gemini | voyage
+   * 'local' es un vectorizador determinista sin key ni red: garantiza que el
+   * recall funcione en todos lados (y hace los tests herméticos). Los backends
+   * neurales se activan con una sola variable + su API key.
+   */
+  get embeddingsProvider(): string {
+    return (this.config.get<string>('EMBEDDINGS_PROVIDER') ?? 'local').toLowerCase();
+  }
+
+  async embed(text: string): Promise<number[]> {
+    const provider = this.embeddingsProvider;
+    const clean = (text ?? '').slice(0, 8000);
+    try {
+      if (provider === 'openai') return await this.embedOpenAi(clean);
+      if (provider === 'gemini') return await this.embedGemini(clean);
+      if (provider === 'voyage') return await this.embedVoyage(clean);
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Embeddings '${provider}' falló: ${reason}. Cae al vectorizador local.`);
+    }
+    return this.embedLocal(clean);
+  }
+
+  /**
+   * Vectorizador local determinista: hashed bag-of-words con signo, L2-normalizado.
+   * El cosine resultante ~ solapamiento de vocabulario. No es neural, pero hace el
+   * recall funcional sin red ni dependencias nativas (que no compilan en este entorno).
+   */
+  private embedLocal(text: string): number[] {
+    const v = new Array<number>(this.embedDim).fill(0);
+    const tokens = text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .split(/[^a-z0-9]+/)
+      .filter((t) => t.length >= 2);
+    for (const tok of tokens) {
+      const bucket = this.hash32(tok) % this.embedDim;
+      const sign = this.hash32('s:' + tok) & 1 ? 1 : -1;
+      v[bucket] += sign;
+    }
+    let norm = Math.sqrt(v.reduce((s, x) => s + x * x, 0));
+    if (norm === 0) norm = 1;
+    return v.map((x) => x / norm);
+  }
+
+  private hash32(s: string): number {
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
+  private async embedOpenAi(text: string): Promise<number[]> {
+    if (!this.openai) {
+      const apiKey = this.config.get<string>('OPENAI_API_KEY');
+      if (!apiKey) throw new Error('Falta OPENAI_API_KEY');
+      this.openai = new OpenAI({ apiKey });
+    }
+    const model = this.config.get<string>('EMBEDDINGS_MODEL') ?? 'text-embedding-3-small';
+    const resp = await this.openai.embeddings.create({ model, input: text });
+    return resp.data[0].embedding as number[];
+  }
+
+  private async embedGemini(text: string): Promise<number[]> {
+    const apiKey = this.config.get<string>('GEMINI_API_KEY');
+    if (!apiKey) throw new Error('Falta GEMINI_API_KEY');
+    const model = this.config.get<string>('EMBEDDINGS_MODEL') ?? 'text-embedding-004';
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:embedContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ model: `models/${model}`, content: { parts: [{ text }] } }),
+    });
+    if (!res.ok) throw new Error(`Gemini embeddings HTTP ${res.status}`);
+    const data = (await res.json()) as { embedding: { values: number[] } };
+    return data.embedding.values;
+  }
+
+  private async embedVoyage(text: string): Promise<number[]> {
+    const apiKey = this.config.get<string>('VOYAGE_API_KEY');
+    if (!apiKey) throw new Error('Falta VOYAGE_API_KEY');
+    const model = this.config.get<string>('EMBEDDINGS_MODEL') ?? 'voyage-3-lite';
+    const res = await fetch('https://api.voyageai.com/v1/embeddings', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({ model, input: text }),
+    });
+    if (!res.ok) throw new Error(`Voyage embeddings HTTP ${res.status}`);
+    const data = (await res.json()) as { data: Array<{ embedding: number[] }> };
+    return data.data[0].embedding;
+  }
+}
+
+export interface ChatRequest {
+  system: string;
+  user: string;
+  model?: string | null;
+  maxTokens?: number;
+}
+
+export interface ChatResponse {
+  text: string;
+  modelName: string;
+  provider: 'anthropic' | 'openai';
+  inputTokens: number;
+  outputTokens: number;
+  latencyMs: number;
 }

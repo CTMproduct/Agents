@@ -23,6 +23,7 @@ import { MarketplaceModule } from './marketplace/marketplace.module';
 import { AutomationsModule } from './automations/automations.module';
 import { SecurityModule } from './security/security.module';
 import { ArenaModule } from './arena/arena.module';
+import { TrainingModule } from './training/training.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { ArenaModule } from './arena/arena.module';
     AutomationsModule,
     SecurityModule,
     ArenaModule,
+    TrainingModule,
   ],
   controllers: [RootController, HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
