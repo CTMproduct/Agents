@@ -8,14 +8,14 @@
   },
   "scripts": {
     "install:all": "npm install --prefix backend && npm install",
-    "build": "vite build",
-    "build:all": "npm install --prefix backend && npm install && vite build",
-    "start": "serve -s dist -l 3000",
-    "dev": "vite",
+    "build": "node ./node_modules/vite/bin/vite.js build",
+    "build:all": "npm install --prefix backend && npm install && node ./node_modules/vite/bin/vite.js build",
+    "start": "node ./node_modules/serve/build/main.js -s dist -l 3000",
+    "dev": "node ./node_modules/vite/bin/vite.js",
     "dev:backend": "npm run dev --prefix backend",
-    "lint": "eslint .",
-    "preview": "vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json"
+    "lint": "node ./node_modules/eslint/bin/eslint.js .",
+    "preview": "node ./node_modules/vite/bin/vite.js preview",
+    "typecheck": "node ./node_modules/typescript/bin/tsc --noEmit -p tsconfig.app.json"
   },
   "dependencies": {
     "axios": "^1.16.0",

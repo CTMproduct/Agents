@@ -463,228 +463,1005 @@ function ensureFallbackDefaultAgent() {
   }
 
   const existingIndex = fallbackStorage.agents.findIndex(
-    (agent) => agent.id === DEFAULT_AGENT_ID || agent.slug =ëö¶‰ËkºwµçH	Òİ[›ÛÚÚ[™ÉÎˆˆ	ÑÙ[™\˜[[™›ÉÎˆˆNÂ‚ˆYˆ
-İ[ˆ
-HÂˆÛÛ™\œØ][ÛœË™›Ü‘XXÚ
-ÈOˆÂˆÛÛœİ^H	ØËœ™Yİ[H	ÉßH	ØËœ™\ÜY\İH	ÉßXÓİÙ\Ø\ÙJ
-NÂˆYˆ
-^š[˜ÛY\Ê	İY[ÉÊH^š[˜ÛY\Ê	Ø]š[Û‰ÊH^š[˜ÛY\Ê	ØY\›Û[™XIÊH^š[˜ÛY\Ê	İXÚÙ]	ÊH^š[˜ÛY\Ê	ØY\›ÜY\	ÊH^š[˜ÛY\Ê	Ù\ØØ[IÊJHÂˆUÜXÖÉÑ›YÚ]Z[É×JÊÎÂˆH[ÙHYˆ
-^š[˜ÛY\Ê	Úİ[	ÊH^š[˜ÛY\Ê	ÚÜÜYZ™IÊH^š[˜ÛY\Ê	Ø[Ú˜[ZY[ÉÊH^š[˜ÛY\Ê	Ü™\Ù\˜IÊH^š[˜ÛY\Ê	ÚXš]XÚ[Û‰ÊJHÂˆUÜXÖÉÒİ[›ÛÚÚ[™É×JÊÎÂˆH[ÙHYˆ
-^š[˜ÛY\Ê	İšXZ™IÊH^š[˜ÛY\Ê	İ\š\ÛIÊH^š[˜ÛY\Ê	Ù\İ[›ÉÊH^š[˜ÛY\Ê	Ú][™\˜\šIÊH^š[˜ÛY\Ê	ÜZ\ÉÊH^š[˜ÛY\Ê	ØÚ]YY	ÊJHÂˆUÜXÖÉÕ˜]™[[™›É×JÊÎÂˆH[ÙHÂˆUÜXÖÉÑÙ[™\˜[[™›É×JÊÎÂˆBˆJNÂˆH[ÙHÂˆËÈ˜[˜XÚÈ\İ0è]XÛÈÚH›È^HÛÛ™\œØXÚ[Û™\È™YÚ\İ˜Y\ÂˆUÜXÖÉÕ˜]™[[™›É×HHNÂˆUÜXÖÉÑ›YÚ]Z[É×HHLÂˆUÜXÖÉÒİ[›ÛÚÚ[™É×HHÂˆUÜXÖÉÑÙ[™\˜[[™›É×HHÂˆB‚ˆËÈØ[İ[\ˆY]˜\Èpê]šXØ\ÈÜÚ[Û˜[\ÂˆÛÛœİPØ]YÛÜšXU\İX\š[ÈHßNÂˆÛÛœİSÜšYÙ[”Z\ÈHßNÂˆÛÛœİT™Yİ[P˜\ÙHHßNÂ‚ˆYˆ
-İ[ˆ
-HÂˆÛÛ™\œØ][ÛœË™›Ü‘XXÚ
-ÈOˆÂˆËÈÜˆØ]YÛÜ°ëXHH\İX\š[ÂˆÛÛœİØ]YÛÜšXHHË˜Ø]YÛÜšXH	Ó›È\ÜXÚYšXØYÉÎÂˆPØ]YÛÜšXU\İX\š[ÖØØ]YÛÜšXWHH
-PØ]YÛÜšXU\İX\š[ÖØØ]YÛÜšXWH
-H
-ÈNÂ‚ˆËÈÜˆÜšYÙ[ˆ[pë\ÂˆÛÛœİZ\ÈHË›ÜšYÙ[—ÜZ\È	Ó›È\ÜXÚYšXØYÉÎÂˆSÜšYÙ[”Z\ÖÜZ\×HH
-SÜšYÙ[”Z\ÖÜZ\×H
-H
-ÈNÂ‚ˆËÈÜˆ™Yİ[H˜\ÙH
-ÚH^\İJBˆYˆ
-Ëœ™Yİ[WØ˜\ÙJHÂˆT™Yİ[P˜\ÙVØËœ™Yİ[WØ˜\ÙWHH
-T™Yİ[P˜\ÙVØËœ™Yİ[WØ˜\ÙWH
-H
-ÈNÂˆBˆJNÂˆB‚ˆ™\ËšœÛÛŠÂˆİ]\Îˆ	ÜİXØÙ\ÜÉËˆÛÛ™\œØ][ÛœÎˆÂˆİ[ˆÙ^NˆÛÛ™\œØ][ÛœË™š[\ŠÈOˆÂˆÛÛœİÙ^HH™]È]J
-KÑ]Tİš[™Ê
-NÂˆÛÛœİ˜]Ñ]HHË[Y\İ[\Ë˜Ü™X]Y]ÂˆÛÛœİÑ]HH˜]Ñ]HÈ™]È]J˜]Ñ]JKÑ]Tİš[™Ê
-Hˆ™]È]J
-KÑ]Tİš[™Ê
-NÂˆ™]\›ˆÙ^HOOHÑ]NÂˆJK›[™İˆ]™\˜YÙQ\˜][ÛˆKˆ]™\˜YÙTØ]\Ù˜Xİ[Ûˆ\œÙQ›Ø]
-]™ÔØ]\Ù˜Xİ[Û‹Ñš^Y
-ŠJKˆ™[™ˆL‹KˆKˆ\™›Ü›X[˜ÙNˆÂˆ\[YNˆNKˆ]™\˜YÙS][˜ŞNˆKˆ\œ›Ü”˜]Nˆ\œÙQ›Ø]
+    (agent) => agent.id === DEFAULT_AGENT_ID || agent.slug === DEFAULT_AGENT.slug,
+  );
 
-[XÚ[˜][Û”˜]HÈL
-KÑš^Y
-ŠJKËÈ\ØHH\œ›ÜˆÛÜœ™[XÚ[Û˜YHÛÛˆ[XÚ[˜XÚ[Û™\Âˆ™\]Y\İÔ\“Z[]NˆLŒˆXZÓ][˜ŞNˆLˆKˆ[XÚ[˜][ÛˆÂˆ˜]Nˆ[XÚ[˜][Û”˜]KˆÛİ[ˆ[XÚ[˜][ÛÛİ[ˆ˜XİX[XØİ\˜XŞKˆUÜXËˆKˆËÈY]˜\Èpê]šXØ\ÈÜÚ[Û˜[\Âˆ\İX\š[ÜÓY]šXØ\ÎˆÂˆPØ]YÛÜšXU\İX\š[ËˆSÜšYÙ[”Z\ËˆKˆ™Yİ[\ÓY]šXØ\ÎˆÂˆT™Yİ[P˜\ÙNˆØš™XİšÙ^\ÊT™Yİ[P˜\ÙJK›[™İˆÈT™Yİ[P˜\ÙHˆ[ˆKˆ]X˜\ÙNˆ\ÔÜİÜ™\ĞÛÛ›™XİY
+  if (existingIndex === -1) {
+    fallbackStorage.agents.unshift(DEFAULT_AGENT);
+  } else {
+    fallbackStorage.agents[existingIndex] = {
+      ...DEFAULT_AGENT,
+      ...fallbackStorage.agents[existingIndex],
+      active_version: {
+        ...DEFAULT_AGENT.active_version,
+        ...(fallbackStorage.agents[existingIndex].active_version || {}),
+      },
+    };
+  }
 
-BˆÈ	ÔÜİÜ™TÔS	Âˆˆ	ÓY[[ÜIËˆ\İ\]Yˆ™]È]J
-KˆJNÂˆHØ]Ú
-\œ›ÜŠHÂˆÛÛœÛÛK™\œ›ÜŠ	Ñ\œ›Üˆ™]Ú[™ÈY]šXÜÎ‰Ë\œ›ÜŠNÂˆ™\Ëœİ]\ÊL
-KšœÛÛŠÂˆİ]\Îˆ	Ù\œ›Ü‰ËˆY\ÜØYÙNˆ	Ñ\œ›Üˆ[Ø[™\ˆY]šXØ\ÉËˆJNÂˆBŸJNÂ‚˜\™Ù]
-	ËØ\KÛY]šXØ\ËX\Ú\İ[IË™\]Z\™PYÙ[YZ[‹\Ş[˜È
-™\K™\ÊHOˆÂˆHÂˆÛÛœİ\Ú\İ[HH™\Kœ]Y\K˜\Ú\İ[H	Ó“ÔIÎÂˆÛÛœİ™YÚ[ÛˆH™\Kœ]Y\Kœ™YÚ[Ûˆ[ÂˆÛÛœİÛÛ™\œØ][ÛœÈH]ØZ]Ù]ÛÛ™\œØ][ÛœÊL
-NÂˆÛÛœİİ[HÛÛ™\œØ][ÛœË›[™İÂˆÛÛœİ[š\]YU\Ù\œÈH™]ÈÙ]
-ˆÛÛ™\œØ][ÛœÂˆ›X\
+  saveFallbackStorage();
+}
 
-ÊHOˆË\İX\š[×ÚYË\İX\š[×Ù[XZ[Ë\İX\š[×Û›ÛXœ™H	ÉÊBˆ™š[\Š›ÛÛX[ŠKˆ
-NÂˆÛÛœİ]™ÔØÛÜ™HHİ[ˆˆÈÛÛ™\œØ][ÛœËœ™YXÙJ
-İ[KÊHOˆİ[H
-È
-ËœØÛÜ™WÜ›ÛYY[ÈÊK
-HÈİ[ˆˆÎÂ‚ˆ™\ËšœÛÛŠÂˆ\Ú\İ[Kˆ™YÚ[Û‹ˆİ[ØÛÛ™\œØXÚ[Û™\Îˆİ[ˆİ[İ\İX\š[ÜÎˆ[š\]YU\Ù\œËœÚ^™KˆØÛÜ™WÜ›ÛYY[Îˆ\œÙQ›Ø]
-]™ÔØÛÜ™KÑš^Y
-ŠJKˆØÛÜ™WÜ™XÚ\Ú[Ûˆ\œÙQ›Ø]
-]™ÔØÛÜ™KÑš^Y
-ŠJKˆØÛÜ™WØÛ\šYYˆ\œÙQ›Ø]
-]™ÔØÛÜ™KÑš^Y
-ŠJKˆØÛÜ™WÜ™[]˜[˜ÚXNˆ\œÙQ›Ø]
-]™ÔØÛÜ™KÑš^Y
-ŠJKˆØÛÜ™WØÛÛ\]]Yˆ\œÙQ›Ø]
-]™ÔØÛÜ™KÑš^Y
-ŠJKˆØÛÜ™Wİ][YYˆ\œÙQ›Ø]
-]™ÔØÛÜ™KÑš^Y
-ŠJKˆ][\ÎˆÛÛ™\œØ][ÛœË›X\
+async function getAgents() {
+  try {
+    if (isPostgresConnected()) {
+      return await getAgentsPostgres();
+    }
+  } catch (error) {
+    console.error('Error loading agents from PostgreSQL:', error.message);
+  }
 
-ÊHOˆ
-ÂˆYˆË—ÚYËšY[ˆ\Ú\İ[WÛ›ÛXœ™NˆË˜\Ú\İ[WÛ›ÛXœ™H\Ú\İ[Kˆ™YÚ[ÛˆËœ™YÚ[Ûˆ™YÚ[Û‹ˆ\İX\š[×Û›ÛXœ™NˆË\İX\š[×Û›ÛXœ™H	Õ\İX\š[È[°ìÛš[[ÉËˆ\İX\š[×Ù[XZ[ˆË\İX\š[×Ù[XZ[[ˆ\İX\š[×ÚYˆË\İX\š[×ÚY[ˆ™Yİ[NˆËœ™Yİ[H	ÉËˆ™\ÜY\İNˆËœ™\ÜY\İH	ÉËˆØÛÜ™WÜ™XÚ\Ú[ÛˆËœØÛÜ™WÜ›ÛYY[ÈËˆØÛÜ™WØÛ\šYYˆËœØÛÜ™WÜ›ÛYY[ÈËˆØÛÜ™WÜ™[]˜[˜ÚXNˆËœØÛÜ™WÜ›ÛYY[ÈËˆØÛÜ™WØÛÛ\]]YˆËœØÛÜ™WÜ›ÛYY[ÈËˆØÛÜ™Wİ][YYˆËœØÛÜ™WÜ›ÛYY[ÈËˆØÛÜ™WÜ›ÛYY[ÎˆËœØÛÜ™WÜ›ÛYY[ÈËˆ\İYšXØXÚ[Ûˆ	Ñ]˜[XXÚpìÛˆ]]Ûpè]XØH›È\ÜÛšX›IËˆ[Y\İ[\ˆË[Y\İ[\Ë˜Ü™X]Y]™]È]J
-KÒTÓÔİš[™Ê
-KˆÜ™X]YØ]ˆË[Y\İ[\Ë˜Ü™X]Y]™]È]J
-KÒTÓÔİš[™Ê
-Kˆ\]YØ]ˆË\]Y]Ë[Y\İ[\Ë˜Ü™X]Y]™]È]J
-KÒTÓÔİš[™Ê
-KˆJJKˆJNÂˆHØ]Ú
-\œ›ÜŠHÂˆÛÛœÛÛK™\œ›ÜŠ	Ñ\œ›Üˆ™]Ú[™ÈÕHY]šXÜÎ‰Ë\œ›ÜŠNÂˆ™\Ëœİ]\ÊL
-KšœÛÛŠÂˆİ]\Îˆ	Ù\œ›Ü‰ËˆY\ÜØYÙNˆ	Ñ\œ›Üˆ[Ø[™\ˆY]šXØ\ÈÕIËˆJNÂˆBŸJNÂ‚˜\™Ù]
-	ËØ\KØÛÛ™\œØ][ÛœËÚ\İÜIË™\]Z\™PYÙ[YZ[‹\Ş[˜È
-™\K™\ÊHOˆÂˆHÂˆÛÛœİ[Z]H\œÙR[
-™\Kœ]Y\K›[Z]
-HÂˆÛÛœİÛÛ™\œØ][ÛœÈH]ØZ]Ù]ÛÛ™\œØ][ÛœÊL
-NÂˆÛÛœİ\İÜHH\œ˜^K™œ›ÛJÈ[™İˆ[Z]K
-ËJHOˆÂˆÛÛœİİ\H™]È]J]K››İÊ
-HH
-[Z]HHHJH
-ˆÍŒ
-NÂˆİ\œÙ]Z[]\Ê
-NÂˆÛÛœİ[™H™]È]Jİ\™Ù][YJ
-H
-ÈÍŒ
-NÂˆÛÛœİ][\ÈHÛÛ™\œØ][ÛœË™š[\Š
-ÊHOˆÂˆÛÛœİ˜]ÈHË[Y\İ[\Ë˜Ü™X]YØ]Ë˜Ü™X]Y]ÂˆÛÛœİ]HH˜]ÈÈ™]È]J˜]ÊHˆ[Âˆ™]\›ˆ]H	‰ˆZ\Ó˜SŠ]K™Ù][YJ
-JH	‰ˆ]HHİ\	‰ˆ]H[™ÂˆJNÂˆÛÛœİØÛÜ™HH][\Ë›[™İˆÈ][\Ëœ™YXÙJ
-İ[KÊHOˆİ[H
-È
-[X™\ŠËœØÛÜ™WÜ›ÛYY[ÊH
-K
-HÈ][\Ë›[™İˆˆÂˆ™]\›ˆÂˆ[Y\İ[\ˆİ\ÓØØ[U[YTİš[™Ê	Ù\ÉËÈİ\ˆ	Ì‹YYÚ]	ËZ[]Nˆ	Ì‹YYÚ]	ÈJKˆÛİ[ˆ][\Ë›[™İˆØ]\Ù˜Xİ[Ûˆ\œÙQ›Ø]
-ØÛÜ™KÑš^Y
-JJKˆNÂˆJNÂˆ™\ËšœÛÛŠ\İÜJNÂˆHØ]Ú
-\œ›ÜŠHÂˆÛÛœÛÛK™\œ›ÜŠ	Ñ\œ›Üˆ™]Ú[™ÈÛÛ™\œØ][Ûˆ\İÜN‰Ë\œ›ÜŠNÂˆ™\Ëœİ]\ÊL
-KšœÛÛŠÈİ]\Îˆ	Ù\œ›Ü‰ËY\ÜØYÙNˆ	Ñ\œ›Üˆ[Ø[™\ˆ[\İÜšX[	ÈJNÂˆBŸJNÂ‚˜\™Ù]
-	ËØ\KÜ\™›Ü›X[˜ÙKÚ\İÜIË™\]Z\™PYÙ[YZ[‹\Ş[˜È
-™\K™\ÊHOˆÂˆHÂˆÛÛœİ[Z]H\œÙR[
-™\Kœ]Y\K›[Z]
-HÂˆÛÛœİÛÛ™\œØ][ÛœÈH]ØZ]Ù]ÛÛ™\œØ][ÛœÊL
-NÂˆÛÛœİ\İÜHH\œ˜^K™œ›ÛJÈ[™İˆ[Z]K
-ËJHOˆÂˆÛÛœİİ\H™]È]J]K››İÊ
-HH
-[Z]HHHJH
-ˆÍŒ
-NÂˆİ\œÙ]Z[]\Ê
-NÂˆÛÛœİ[™H™]È]Jİ\™Ù][YJ
-H
-ÈÍŒ
-NÂˆÛÛœİ][\ÈHÛÛ™\œØ][ÛœË™š[\Š
-ÊHOˆÂˆÛÛœİ˜]ÈHË[Y\İ[\Ë˜Ü™X]YØ]Ë˜Ü™X]Y]ÂˆÛÛœİ]HH˜]ÈÈ™]È]J˜]ÊHˆ[Âˆ™]\›ˆ]H	‰ˆZ\Ó˜SŠ]K™Ù][YJ
-JH	‰ˆ]HHİ\	‰ˆ]H[™ÂˆJNÂˆÛÛœİ][˜ŞR][\ÈH][\Ë›X\
+  ensureFallbackDefaultAgent();
+  return fallbackStorage.agents;
+}
 
-ÊHOˆ[X™\ŠË›][˜ŞWÛ\È
-JK™š[\Š
-ŠHOˆˆˆ
-NÂˆÛÛœİ][˜ŞHH][˜ŞR][\Ë›[™İˆÈ][˜ŞR][\Ëœ™YXÙJ
-İ[KŠHOˆİ[H
-È‹
-HÈ][˜ŞR][\Ë›[™İˆˆÂˆ™]\›ˆÂˆ[Y\İ[\ˆİ\ÓØØ[U[YTİš[™Ê	Ù\ÉËÈİ\ˆ	Ì‹YYÚ]	ËZ[]Nˆ	Ì‹YYÚ]	ÈJKˆ][˜ŞNˆX]œ›İ[™
-][˜ŞJKˆ\œ›ÜœÎˆˆNÂˆJNÂˆ™\ËšœÛÛŠ\İÜJNÂˆHØ]Ú
-\œ›ÜŠHÂˆÛÛœÛÛK™\œ›ÜŠ	Ñ\œ›Üˆ™]Ú[™È\™›Ü›X[˜ÙH\İÜN‰Ë\œ›ÜŠNÂˆ™\Ëœİ]\ÊL
-KšœÛÛŠÈİ]\Îˆ	Ù\œ›Ü‰ËY\ÜØYÙNˆ	Ñ\œ›Üˆ[Ø[™\ˆ[\İÜšX[H™[™[ZY[ÉÈJNÂˆBŸJNÂ‚˜\™Ù]
-	ËØ\KÚ[XÚ[˜][ÛœËÚ\İÜIË™\]Z\™PYÙ[YZ[‹\Ş[˜È
-™\K™\ÊHOˆÂˆHÂˆÛÛœİ[Z]H\œÙR[
-™\Kœ]Y\K›[Z]
-HÎÂˆÛÛœİÛÛ™\œØ][ÛœÈH]ØZ]Ù]ÛÛ™\œØ][ÛœÊL
-NÂˆÛÛœİ\İÜHH\œ˜^K™œ›ÛJÈ[™İˆ[Z]K
-ËJHOˆÂˆÛÛœİ^HH™]È]J]K››İÊ
-HH
-[Z]HHHJH
-ˆ
-NÂˆÛÛœİ][\ÈHÛÛ™\œØ][ÛœË™š[\Š
-ÊHOˆÂˆÛÛœİ˜]ÈHË[Y\İ[\Ë˜Ü™X]YØ]Ë˜Ü™X]Y]ÂˆÛÛœİ]HH˜]ÈÈ™]È]J˜]ÊHˆ[Âˆ™]\›ˆ]H	‰ˆZ\Ó˜SŠ]K™Ù][YJ
-JH	‰ˆ]KÑ]Tİš[™Ê
-HOOH^KÑ]Tİš[™Ê
-NÂˆJNÂˆÛÛœİİÔ]X[]HH][\Ë™š[\Š
-ÊHOˆ
-[X™\ŠËœØÛÜ™WÜ›ÛYY[ÊHJHHÊNÂˆ™]\›ˆÂˆ]Nˆ^KÓØØ[Q]Tİš[™Ê	Ù\ÉÊKˆ˜]Nˆ][\Ë›[™İÈ\œÙQ›Ø]
+async function getAgent(identifier = DEFAULT_AGENT_ID) {
+  const key = String(identifier || DEFAULT_AGENT_ID);
+  const normalizedKey = key.toLowerCase();
 
+  try {
+    if (isPostgresConnected()) {
+      const agent = await getAgentPostgres(key);
+      if (agent) return agent;
+    }
+  } catch (error) {
+    console.error('Error loading agent from PostgreSQL:', error.message);
+  }
 
-İÔ]X[]K›[™İÈ][\Ë›[™İ
-H
-ˆL
-KÑš^Y
-ŠJHˆˆÛİ[ˆİÔ]X[]K›[™İˆNÂˆJNÂˆ™\ËšœÛÛŠ\İÜJNÂˆHØ]Ú
-\œ›ÜŠHÂˆÛÛœÛÛK™\œ›ÜŠ	Ñ\œ›Üˆ™]Ú[™È[XÚ[˜][Ûˆ\İÜN‰Ë\œ›ÜŠNÂˆ™\Ëœİ]\ÊL
-KšœÛÛŠÈİ]\Îˆ	Ù\œ›Ü‰ËY\ÜØYÙNˆ	Ñ\œ›Üˆ[Ø[™\ˆ[\İÜšX[HØ[YY	ÈJNÂˆBŸJNÂ‚‹ËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB‹ËÈS‘ÒS•ˆÑUØ\KØÛÛ™\œØ][ÛœËÎšY‹ËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB˜\™Ù]
-	ËØ\KØÛÛ™\œØ][ÛœËÎšY	Ë™\]Z\™PYÙ[YZ[‹\Ş[˜È
-™\K™\ÊHOˆÂˆHÂˆÛÛœİÈYHH™\Kœ\˜[\ÎÂˆ]ÛÛ™\œØ][ÛˆH[Â‚ˆYˆ
-\ÔÜİÜ™\ĞÛÛ›™XİY
+  ensureFallbackDefaultAgent();
+  return fallbackStorage.agents.find((agent) => {
+    return [agent.id, agent.slug, agent.name]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase() === normalizedKey);
+  }) || null;
+}
 
-JHÂˆÛÛ™\œØ][ÛˆH]ØZ]Ù]ÛÛ™\œØ][ÛRYÜİÜ™\ÊY
-NÂˆB‚ˆYˆ
-XÛÛ™\œØ][ÛŠHÂˆÛÛ™\œØ][ÛˆH˜[˜XÚÔİÜ˜YÙK˜ÛÛ™\œØ][ÛœË™š[™
+async function saveAgent(data) {
+  const payload = validateAgentPayload(data);
+  const { name } = payload;
 
-ÊHOˆËšYOOHYË—ÚYOOHY
-H[ÂˆB‚ˆYˆ
-XÛÛ™\œØ][ÛŠHÂˆ™]\›ˆ™\Ëœİ]\Ê
-KšœÛÛŠÈİ]\Îˆ	Ù\œ›Ü‰Ë\œ›Üˆ	ĞÛÛ™\œØXÚ[Ûˆ›È[˜ÛÛ˜YIÈJNÂˆB‚ˆ™\ËšœÛÛŠÛÛ™\œØ][ÛŠNÂˆHØ]Ú
-\œ›ÜŠHÂˆÛÛœÛÛK™\œ›ÜŠ	Ñ\œ›Üˆ™]Ú[™ÈÛÛ™\œØ][Û‰Ë\œ›ÜŠNÂˆ™\Ëœİ]\ÊL
-KšœÛÛŠÈİ]\Îˆ	Ù\œ›Ü‰ËY\ÜØYÙNˆ	Ñ\œ›Üˆ[Ø[™\ˆHÛÛ™\œØXÚ[Û‰ÈJNÂˆBŸJNÂ‚‹ËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB‹ËÈX[ÚXÚÂ‹ËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB˜\™Ù]
-	ËÚX[	Ë
-™\K™\ÊHOˆÂˆ™\Ëœİ]\ÊŒ
-KšœÛÛŠÂˆİ]\Îˆ	ÛÚÉËˆ[Y\İ[\ˆ™]È]J
-KÒTÓÔİš[™Ê
-Kˆ]X˜\ÙNˆ\ÔÜİÜ™\ĞÛÛ›™XİY
+  try {
+    if (isPostgresConnected()) {
+      return await saveAgentPostgres(payload);
+    }
+  } catch (error) {
+    console.error('Error saving agent to PostgreSQL:', error.message);
+    if (error.code === '23505') {
+      throw httpError(409, 'Ya existe un agente con ese identificador');
+    }
+    throw error;
+  }
 
-BˆÈ	ÔÜİÜ™TÔSÛÛ›™XİY	Âˆˆ	Õ\Ú[™ÈY[[ÜHİÜ˜YÙIËˆÛÛ™\œØ][ÛœĞØ\\™Yˆ˜[˜XÚÔİÜ˜YÙK˜ÛÛ™\œØ][ÛœË›[™İˆJNÂŸJNÂ‚‹ËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB‹ËÈÔH˜[˜XÚÈHÙ\™H[™^š[›Üˆœ›Û[™›İ]\Â‹ËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB˜\™Ù]
-	Ê‰Ë
-™\K™\ÊHOˆÂˆËÈÛ‰İÙ\™H[™^š[›ÜˆTH›İ]\ÈÜˆX[ÚXÚÂˆYˆ
-ˆ™\Kœ]œİ\ÕÚ]
-	ËØ\IÊHˆ™\Kœ]OOH	ËÚX[	Èˆ™\Kœ]œİ\ÕÚ]
-	ËØ\ÜÙ]ÉÊBˆ
-HÂˆ™\Ëœİ]\Ê
-KšœÛÛŠÂˆİ]\Îˆ	Ù\œ›Ü‰ËˆY\ÜØYÙNˆ[™Ú[›È[˜ÛÛ˜YÎˆ	Ü™\K›Y]ÙH	Ü™\Kœ]Xˆ]˜Z[X›Q[™Ú[ÎˆÂˆÑUˆÉËÚX[	Ë	ËØ\KÛY]šXÜÉË	ËØ\KØÛÛ™\œØ][ÛœÉË	ËØ\KÙ^ÜØÛÛ™\œØ][ÛœÉ×KˆÔÕˆÉËØ\KØÚ]	Ë	ËØ\KØØ\\˜\‹XÛÛ™\œØXÚ[Û‰×BˆBˆJNÂˆ™]\›ÂˆB‚ˆËÈÙ\™H[™^š[›Üˆ[İ\ˆ›İ]\È
-œ›Û[™ÔJBˆÛÛœİ[™^]H]š›Ú[Šœ›Û[™\İ]	Ú[™^š[	ÊNÂˆYˆ
-œË™^\İÔŞ[˜Ê[™^]
-JHÂˆ™\ËœÙ[™š[J[™^]
-\œŠHOˆÂˆYˆ
-\œŠHÂˆÛÛœÛÛK™\œ›ÜŠ	Ñ\œ›ÜˆÙ\š[™È[™^š[‰Ë\œŠNÂˆ™\Ëœİ]\ÊL
-KšœÛÛŠÈİ]\Îˆ	Ù\œ›Ü‰ËY\ÜØYÙNˆ	Ò[\›˜[Ù\™\ˆ\œ›Ü‰ÈJNÂˆBˆJNÂˆH[ÙHÂˆ™\Ëœİ]\Ê
-KšœÛÛŠÂˆİ]\Îˆ	Ù\œ›Ü‰ËˆY\ÜØYÙNˆ	Ñœ›Û[™›İ›İ[™ˆX\ÙH[œİ\™Hœ›Û[™\ÈZ[‰Ëˆ]Z[Îˆ^XİY\İ]ˆ	Ú[™^]XˆJNÂˆBŸJNÂ‚‹ËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB‹ËÈ\œ›Üˆ[™\œÂ‹ËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB‚˜\\ÙJ
-\œ‹™\K™\Ë™^
-HOˆÂˆÛÛœÛÛK™\œ›ÜŠ	ø§c[š[™Y\œ›Ü‰Ë\œŠNÂˆ™\Ëœİ]\ÊL
-KšœÛÛŠÂˆİ]\Îˆ	Ù\œ›Ü‰ËˆY\ÜØYÙNˆ	Ñ\œ›Üˆ[\››È[Ù\šYÜ‰Ëˆ\œ›Üˆ“ÑWÑS•ˆOOH	Ù]™[ÜY[	ÈÈ\œ‹›Y\ÜØYÙHˆ	Ò[\›˜[Ù\™\ˆ\œ›Ü‰ÂˆJNÂŸJNÂ‚‹ËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB‹ËÈ[\ˆ[˜İ[ÛœÂ‹ËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB˜\Ş[˜È[˜İ[ÛˆÙ[™\˜]P\ÜÚ\İ[™\ÜÛœÙJ™Yİ[KYÙ[HQUSĞQÑS•
-HÂˆÛÛœİXİ]™U™\œÚ[ÛˆHYÙ[Ë˜Xİ]™Wİ™\œÚ[ÛˆQUSĞQÑS•˜Xİ]™Wİ™\œÚ[ÛÂˆÛÛœİİ\Y]H]K››İÊ
-NÂˆÛÛœİÛÛ\][ÛˆH]ØZ]Ü[˜ZK˜Ú]˜ÛÛ\][ÛœË˜Ü™X]JÂˆ[Ù[ˆXİ]™U™\œÚ[Û‹›[Ù[ÔSRWÓSÑSˆ[\\˜]\™Nˆ[X™\ŠXİ]™U™\œÚ[Û‹[\\˜]\™HÏÈ
-KˆX^İÚÙ[œÎˆ[X™\ŠXİ]™U™\œÚ[Û‹›X^İÚÙ[œÈÍL
-KˆY\ÜØYÙ\ÎˆÂˆÂˆ›ÛNˆ	ÜŞ\İ[IËˆÛÛ[ˆXİ]™U™\œÚ[Û‹œŞ\İ[WÜ›Û\QUSĞQÑS•Ô“ÓTˆKˆÈ›ÛNˆ	İ\Ù\‰ËÛÛ[ˆ™Yİ[HKˆKˆJNÂ‚ˆ™]\›ˆÂˆ™\ÜY\İNˆÛÛ\][Û‹˜ÚÚXÙ\ÖÌOË›Y\ÜØYÙOË˜ÛÛ[Ëš[J
-H	ÉËˆ›İšY\ˆ	ÛÜ[˜ZIËˆ[Ù[ˆXİ]™U™\œÚ[Û‹›[Ù[ÔSRWÓSÑSˆ][˜ŞWÛ\Îˆ]K››İÊ
-HHİ\Y]ˆÚÙ[œ×Ú[œ]ˆÛÛ\][Û‹\ØYÙOËœ›Û\İÚÙ[œÈˆÚÙ[œ×Ûİ]]ˆÛÛ\][Û‹\ØYÙOË˜ÛÛ\][Û—İÚÙ[œÈˆÛÜİİ\ÙˆˆNÂŸB™[˜İ[ÛˆÛÛ™\ĞÔÕŠÛÛ™\œØ][ÛœÊHÂˆÛÛœİXY\œÈHÉÒQ	Ë	Ğ\Ú\İ[IË	Ô™Yİ[IË	Ô™\ÜY\İIË	Õ\İX\š[ÉË	Ñ[XZ[	Ë	ÔØÛÜ™IË	Ñ™XÚI×NÂˆÛÛœİ›İÜÈHÛÛ™\œØ][ÛœË›X\
-ÈOˆÂˆÛÛœİ˜]Ñ]HHË[Y\İ[\Ë˜Ü™X]Y]Âˆ]]TİÂˆHÂˆÛÛœİH˜]Ñ]HÈ™]È]J˜]Ñ]JHˆ™]È]J
-NÂˆ]TİˆH\Ó˜SŠ™Ù][YJ
-JHÈ™]È]J
-KÒTÓÔİš[™Ê
-HˆÒTÓÔİš[™Ê
-NÂˆHØ]Ú
-JHÂˆ]TİˆH™]È]J
-KÒTÓÔİš[™Ê
-NÂˆBˆ™]\›ˆÂˆË—ÚYËšYˆË˜\Ú\İ[WÛ›ÛXœ™H	ÉËˆ‰ÊËœ™Yİ[H	ÉÊKœ™\XÙJÈ‹ÙË	Èˆ‰Ê_H˜ˆ‰ÊËœ™\ÜY\İH	ÉÊKœ™\XÙJÈ‹ÙË	Èˆ‰Ê_H˜ˆË\İX\š[×Û›ÛXœ™H	ÉËˆË\İX\š[×Ù[XZ[	ÉËˆËœØÛÜ™WÜ›ÛYY[È	ÉËˆ]Tİ‹ˆNÂˆJNÂ‚ˆ™]\›ˆÚXY\œË‹‹œ›İÜ×K›X\
-›İÈOˆ›İËš›Ú[Š	Ë	ÊJKš›Ú[Š	×‰ÊNÂŸB‚‹ËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB‹ËÈİ\Ù\™\‚‹ËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB˜ÛÛœİİ\Ù\™\ˆH\Ş[˜È
+  ensureFallbackDefaultAgent();
 
-HOˆÂˆHÂˆËÈ[š]X[^™HÜİÜ™TÔS
-™\]Z\™Y
-BˆÛÛœİÜİÜ™\Ô™XYHH]ØZ][š]ÜİÜ™\Ê
-NÂˆYˆ
-\ÜİÜ™\Ô™XYJHÂˆÛÛœÛÛKØ\›Š	ø¦¨;î#ÈÜİÜ™TÔS›İ]˜Z[X›KÚ[\ÙHY[[ÜH˜[˜XÚÉÊNÂˆB‚ˆ\›\İ[ŠÔ•
+  const existingIndex = payload.id
+    ? fallbackStorage.agents.findIndex((agent) => agent.id === payload.id)
+    : -1;
+  const slugOwnerIndex = fallbackStorage.agents.findIndex((agent) => agent.slug === payload.slug);
+  if (slugOwnerIndex >= 0 && slugOwnerIndex !== existingIndex) {
+    throw httpError(409, 'Ya existe un agente con ese identificador');
+  }
+  const current = existingIndex >= 0 ? fallbackStorage.agents[existingIndex] : null;
+  const currentVersion = current?.active_version || DEFAULT_AGENT.active_version;
+  const shouldCreateVersion =
+    !current ||
+    (payload.system_prompt !== undefined && payload.system_prompt !== currentVersion.system_prompt) ||
+    (payload.model !== undefined && payload.model !== currentVersion.model) ||
+    (payload.temperature !== undefined && Number(payload.temperature) !== Number(currentVersion.temperature)) ||
+    (payload.max_tokens !== undefined && Number(payload.max_tokens) !== Number(currentVersion.max_tokens)) ||
+    (payload.tools !== undefined && JSON.stringify(payload.tools) !== JSON.stringify(currentVersion.tools || [])) ||
+    (payload.guardrails !== undefined && JSON.stringify(payload.guardrails) !== JSON.stringify(currentVersion.guardrails || {}));
 
-HOˆÂˆÛÛœÛÛK›ÙÊ8§!H›Ü˜H˜XÚÙ[™[›š[™ÈÛˆ‹ËÛØØ[Üİ‰ÔÔ•X
-NÂˆÛÛœÛÛK›ÙÊ<'äâˆ]X˜\ÙNˆ	Ú\ÔÜİÜ™\ĞÛÛ›™XİY
+  const id = current?.id || payload.id || `agent_${payload.slug}_${Date.now()}`;
+  const activeVersion = shouldCreateVersion
+    ? {
+        id: `agent_version_${Date.now()}`,
+        version: Number(currentVersion.version || 0) + 1,
+        system_prompt: payload.system_prompt || currentVersion.system_prompt || DEFAULT_AGENT_PROMPT,
+        model: payload.model || currentVersion.model || OPENAI_MODEL,
+        temperature: Number(payload.temperature ?? currentVersion.temperature ?? 0.4),
+        max_tokens: Number(payload.max_tokens ?? currentVersion.max_tokens ?? 350),
+        tools: payload.tools || currentVersion.tools || [],
+        guardrails: payload.guardrails || currentVersion.guardrails || {},
+        created_at: new Date().toISOString(),
+      }
+    : currentVersion;
 
-HÈ	ÔÜİÜ™TÔS8§!IÈˆ	ÓY[[ÜHİÜ˜YÙH
-˜[˜XÚÊH8¦¨;î#ÉßX
-NÂˆÛÛœÛÛK›ÙÊ<'é%ˆÔÕØ\KØÚ]HÙ[™\˜]HÔ™\ÜÛœÙX
-NÂˆÛÛœÛÛK›ÙÊ<'äçHÔÕØ\KØØ\\˜\‹XÛÛ™\œØXÚ[ÛˆHØ\\™HÛÛ™\œØ][ÛœØ
-NÂˆÛÛœÛÛK›ÙÊ<'äâˆÑUØ\KÛY]šXÜÈHÙ]Y]šXÜØ
-NÂˆÛÛœÛÛK›ÙÊ<'ä¯ˆÑUØ\KØÛÛ™\œØ][ÛœÈH\İ[ÛÛ™\œØ][ÛœØ
-NÂˆÛÛœÛÛK›ÙÊ<'äéHÑUØ\KÙ^ÜØÛÛ™\œØ][ÛœÈH^Ü\È”ÓÓ‹ĞÔÕ˜
-NÂˆÛÛœÛÛK›ÙÊ<'ãéHÑUÚX[HX[ÚXÚØ
-NÂˆJNÂˆHØ]Ú
-\œ›ÜŠHÂˆÛÛœÛÛK™\œ›ÜŠ	Ñ˜][\œ›Üˆİ\[™ÈÙ\™\‰Ë\œ›ÜŠNÂˆ›ØÙ\ÜË™^]
-JNÂˆBŸNÂ‚œİ\Ù\™\Š
-NÂ
+  const agent = {
+    ...current,
+    id,
+    slug: payload.slug,
+    name,
+    description: payload.description ?? current?.description ?? '',
+    status: payload.status || current?.status || 'draft',
+    default_language: payload.default_language || current?.default_language || 'es',
+    avatar: payload.avatar || current?.avatar || 'bot',
+    created_at: current?.created_at || new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    active_version: activeVersion,
+  };
+
+  if (existingIndex >= 0) {
+    fallbackStorage.agents[existingIndex] = agent;
+  } else {
+    fallbackStorage.agents.unshift(agent);
+  }
+
+  saveFallbackStorage();
+  return agent;
+}
+
+function getAgentIdentifierFromPayload(payload = {}) {
+  return payload.agent_id || payload.agent_slug || payload.agent || payload.asistente_nombre || DEFAULT_AGENT_ID;
+}
+
+async function resolveAgentFromPayload(payload = {}) {
+  const agent = await getAgent(getAgentIdentifierFromPayload(payload));
+  if (!agent) throw httpError(404, 'Agente no encontrado');
+  return agent;
+}
+
+// ============================================
+// ENDPOINTS: Agentes
+// ============================================
+app.get('/api/agents', async (req, res) => {
+  try {
+    const agents = await getAgents();
+    res.json({
+      status: 'success',
+      count: agents.length,
+      data: hasAgentAdminAccess(req) ? agents : agents.map(toPublicAgent),
+    });
+  } catch (error) {
+    console.error('Error fetching agents:', error);
+    res.status(500).json({ status: 'error', message: 'Error al obtener agentes' });
+  }
+});
+
+app.post('/api/agents/admin/verify', requireAgentAdmin, (req, res) => {
+  res.json({ status: 'success', configured: Boolean(AGENT_ADMIN_KEY) });
+});
+
+app.post('/api/agents', requireAgentAdmin, async (req, res) => {
+  try {
+    const agent = await saveAgent(req.body);
+    res.status(201).json({ status: 'success', data: agent });
+  } catch (error) {
+    console.error('Error creating agent:', error);
+    const statusCode = error.statusCode || 500;
+    res.status(statusCode).json({
+      status: 'error',
+      message: statusCode >= 500 ? 'Error al crear agente' : error.message,
+    });
+  }
+});
+
+app.get('/api/agents/:id', async (req, res) => {
+  try {
+    const agent = await getAgent(req.params.id);
+    if (!agent) {
+      return res.status(404).json({ status: 'error', message: 'Agente no encontrado' });
+    }
+    res.json({ status: 'success', data: hasAgentAdminAccess(req) ? agent : toPublicAgent(agent) });
+  } catch (error) {
+    console.error('Error fetching agent:', error);
+    res.status(500).json({ status: 'error', message: 'Error al obtener agente' });
+  }
+});
+
+app.patch('/api/agents/:id', requireAgentAdmin, async (req, res) => {
+  try {
+    const current = await getAgent(req.params.id);
+    if (!current) {
+      return res.status(404).json({ status: 'error', message: 'Agente no encontrado' });
+    }
+
+    const payload = {
+      id: current.id,
+      name: req.body.name ?? current.name,
+      slug: req.body.slug ?? current.slug,
+      description: req.body.description ?? current.description,
+      status: req.body.status ?? current.status,
+      default_language: req.body.default_language ?? current.default_language,
+      avatar: req.body.avatar ?? current.avatar,
+    };
+
+    for (const key of ['system_prompt', 'model', 'temperature', 'max_tokens', 'tools', 'guardrails']) {
+      if (hasOwn(req.body, key)) payload[key] = req.body[key];
+    }
+
+    const agent = await saveAgent(payload);
+    res.json({ status: 'success', data: agent });
+  } catch (error) {
+    console.error('Error updating agent:', error);
+    const statusCode = error.statusCode || 500;
+    res.status(statusCode).json({
+      status: 'error',
+      message: statusCode >= 500 ? 'Error al actualizar agente' : error.message,
+    });
+  }
+});
+
+app.post('/api/agents/:id/test', requireAgentAdmin, aiRateLimit, async (req, res) => {
+  try {
+    const { pregunta } = req.body;
+    if (!pregunta || !String(pregunta).trim()) {
+      return res.status(400).json({ status: 'error', message: 'Falta campo requerido: pregunta' });
+    }
+
+    const agent = await getAgent(req.params.id);
+    if (!agent) {
+      return res.status(404).json({ status: 'error', message: 'Agente no encontrado' });
+    }
+
+    const generated = await generateAssistantResponse(String(pregunta).trim(), agent);
+    if (!generated.respuesta) {
+      return res.status(502).json({ status: 'error', message: 'No se pudo generar respuesta con OpenAI' });
+    }
+
+    res.json({
+      status: 'success',
+      respuesta: generated.respuesta,
+      modelo: generated.model,
+      agent: toPublicAgent(agent),
+      telemetry: generated,
+    });
+  } catch (error) {
+    console.error('Error testing agent:', error);
+    const statusCode = error.statusCode || 500;
+    res.status(statusCode).json({
+      status: 'error',
+      message: statusCode >= 500 ? 'Error al probar agente' : error.message,
+    });
+  }
+});
+// API status route
+app.get('/api/status', (req, res) => {
+  res.json({
+    status: 'online',
+    message: 'Nora API Backend is running',
+    agentAdminConfigured: Boolean(AGENT_ADMIN_KEY),
+    database: isPostgresConnected()
+      ? 'PostgreSQL âœ…'
+      : 'Memory (fallback) âš ï¸',
+    endpoints: {
+      agents: '/api/agents',
+      metrics: '/api/metrics',
+      health: '/health',
+      chat: '/api/chat',
+      chatCapture: '/api/chat-capturar',
+      capture: '/api/capturar-conversacion',
+      conversations: '/api/conversations',
+      export: '/api/export/conversations',
+      frontend: '/',
+    }
+  });
+});
+// ============================================
+// ENDPOINT: POST /api/chat
+// ============================================
+app.post('/api/chat', aiRateLimit, async (req, res) => {
+  try {
+    const { pregunta } = req.body;
+
+    if (typeof pregunta !== 'string' || !pregunta.trim()) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Falta campo requerido: pregunta',
+      });
+    }
+
+    const agent = await resolveAgentFromPayload(req.body);
+    const generated = await generateAssistantResponse(pregunta.trim(), agent);
+
+    if (!generated.respuesta) {
+      return res.status(502).json({
+        status: 'error',
+        message: 'No se pudo generar respuesta con OpenAI',
+      });
+    }
+
+    return res.status(200).json({
+      status: 'success',
+      respuesta: generated.respuesta,
+      modelo: generated.model,
+      agent: toPublicAgent(agent),
+      telemetry: generated,
+    });
+  } catch (error) {
+    console.error('Error generating chat response:', error);
+    const statusCode = error.statusCode || 500;
+    return res.status(statusCode).json({
+      status: 'error',
+      message: statusCode >= 500 ? 'Error al generar respuesta' : error.message,
+    });
+  }
+});
+// ============================================
+// ENDPOINT: POST /api/chat-capturar
+// ============================================
+app.post('/api/chat-capturar', aiRateLimit, async (req, res) => {
+  try {
+    const {
+      pregunta,
+      usuario_nombre,
+      usuario_email,
+      usuario_id,
+      region = 'Nora',
+      asistente_nombre = 'NORA',
+      categoria,
+      origen_pais,
+      pregunta_base,
+      fuente = 'DASHBOARD',
+      tipo_interaccion = 'respuesta_gpt',
+    } = req.body;
+
+    if (typeof pregunta !== 'string' || !pregunta.trim()) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Falta campo requerido: pregunta',
+      });
+    }
+
+    const agent = await resolveAgentFromPayload(req.body);
+    const generated = await generateAssistantResponse(pregunta.trim(), agent);
+
+    if (!generated.respuesta) {
+      return res.status(502).json({
+        status: 'error',
+        message: 'No se pudo generar respuesta con OpenAI',
+      });
+    }
+
+    const conversationData = {
+      agent_id: agent.id,
+      agent_version_id: agent.active_version?.id,
+      asistente_nombre: agent.name || asistente_nombre,
+      pregunta,
+      respuesta: generated.respuesta,
+      usuario_nombre,
+      usuario_email,
+      usuario_id,
+      region,
+      status: 'capturada',
+      score_promedio: 4.5,
+      categoria: categoria || 'No especificado',
+      origen_pais: origen_pais || 'No especificado',
+      pregunta_base: pregunta_base || null,
+      fuente,
+      tipo_interaccion,
+      provider: generated.provider,
+      model: generated.model,
+      latency_ms: generated.latency_ms,
+      tokens_input: generated.tokens_input,
+      tokens_output: generated.tokens_output,
+      cost_usd: generated.cost_usd,
+    };
+
+    const savedConversation = await saveConversation(conversationData);
+
+    return res.status(200).json({
+      status: 'success',
+      respuesta: generated.respuesta,
+      modelo: generated.model,
+      agent: toPublicAgent(agent),
+      conversationId: savedConversation.id || savedConversation._id,
+      score_promedio: savedConversation.score_promedio,
+      database: isPostgresConnected() ? 'PostgreSQL' : 'Memory',
+    });
+  } catch (error) {
+    console.error('Error generating and capturing conversation:', error);
+    const statusCode = error.statusCode || 500;
+    return res.status(statusCode).json({
+      status: 'error',
+      message: statusCode >= 500 ? 'Error al generar y capturar la conversacion' : error.message,
+    });
+  }
+});
+
+// ============================================
+// ENDPOINT: POST /api/capturar-conversacion
+// ============================================
+app.post('/api/capturar-conversacion', aiRateLimit, async (req, res) => {
+  try {
+    const {
+      asistente_nombre,
+      pregunta,
+      respuesta,
+      usuario_nombre,
+      usuario_email,
+      usuario_id,
+      region,
+      status = 'capturada',
+      // Nuevos campos opcionales
+      categoria,
+      origen_pais,
+      pregunta_base,
+      fuente,
+      tipo_interaccion,
+    } = req.body;
+
+    // Validacion
+    if (
+      typeof pregunta !== 'string' ||
+      !pregunta.trim() ||
+      typeof respuesta !== 'string' ||
+      !respuesta.trim()
+    ) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Faltan campos requeridos: pregunta, respuesta',
+      });
+    }
+
+    const agent = await resolveAgentFromPayload(req.body);
+
+    let scorePromedio = 4.5;
+    try {
+      const evaluation = await openai.chat.completions.create({
+        model: EVALUATION_MODEL,
+        messages: [
+          {
+            role: 'system',
+            content: 'Eres un evaluador de calidad. EvalÃºa en escala 1-5. Responde solo con un nÃºmero.',
+          },
+          {
+            role: 'user',
+            content: `Pregunta: ${pregunta}\n\nRespuesta: ${respuesta}\n\nCalifica:`,
+          },
+        ],
+        max_tokens: 10,
+      });
+
+      const scoreText = evaluation.choices[0].message.content.trim();
+      scorePromedio = Math.min(Math.max(parseFloat(scoreText) || 4.5, 1), 5);
+    } catch (err) {
+      console.error('Error evaluating with OpenAI:', err.message);
+    }
+
+    // Guardar conversacion con campos opcionales
+    const conversationData = {
+      agent_id: agent.id,
+      agent_version_id: agent.active_version?.id,
+      asistente_nombre: agent.name || asistente_nombre || 'NORA',
+      pregunta,
+      respuesta,
+      usuario_nombre,
+      usuario_email,
+      usuario_id,
+      region,
+      status,
+      score_promedio: scorePromedio,
+      // Campos opcionales con defaults
+      categoria: categoria || 'No especificado',
+      origen_pais: origen_pais || 'No especificado',
+      pregunta_base: pregunta_base || null,
+      fuente: fuente || 'GPT_ACTION',
+      tipo_interaccion: tipo_interaccion || 'respuesta_gpt',
+      provider: 'openai',
+      model: agent.active_version?.model || OPENAI_MODEL,
+    };
+
+    const savedConversation = await saveConversation(conversationData);
+
+    const database = isPostgresConnected()
+      ? 'PostgreSQL'
+      : 'Memory';
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Captura registrada correctamente',
+      data: {
+        conversationId: savedConversation.id || savedConversation._id,
+      },
+      score_promedio: scorePromedio,
+      agent: toPublicAgent(agent),
+      database: database,
+    });
+  } catch (error) {
+    console.error('Error capturing conversation:', error);
+    const statusCode = error.statusCode || 500;
+    res.status(statusCode).json({
+      status: 'error',
+      message: statusCode >= 500 ? 'Error al capturar la conversacion' : error.message,
+    });
+  }
+});
+
+// ============================================
+// ENDPOINT: GET /api/conversations
+// ============================================
+app.get('/api/conversations', requireAgentAdmin, async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 100;
+    const conversations = await getConversations(limit);
+
+    const database = isPostgresConnected()
+      ? 'PostgreSQL'
+      : 'Memory';
+
+    res.json({
+      status: 'success',
+      count: conversations.length,
+      data: conversations,
+      database: database,
+    });
+  } catch (error) {
+    console.error('Error fetching conversations:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Error al obtener conversaciones',
+    });
+  }
+});
+
+// ============================================
+// ENDPOINT: GET /api/export/conversations (CSV/JSON)
+// ============================================
+app.get('/api/export/conversations', requireAgentAdmin, async (req, res) => {
+  try {
+    const format = req.query.format || 'json'; // 'json' o 'csv'
+    const conversations = await getConversations(1000);
+
+    if (format === 'csv') {
+      // Convert to CSV
+      const csv = convertToCSV(conversations);
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename=conversations.csv');
+      res.send(csv);
+    } else {
+      // JSON
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', 'attachment; filename=conversations.json');
+      res.json({
+        status: 'success',
+        exportedAt: new Date(),
+        count: conversations.length,
+        data: conversations,
+      });
+    }
+  } catch (error) {
+    console.error('Error exporting conversations:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Error al exportar conversaciones',
+    });
+  }
+});
+
+// ============================================
+// ENDPOINTS: MÃ©tricas
+// ============================================
+app.get('/api/metrics', requireAgentAdmin, async (req, res) => {
+  try {
+    const conversations = await getConversations();
+    const total = conversations.length;
+    const avgSatisfaction = total > 0
+      ? conversations.reduce((sum, c) => sum + (c.score_promedio || 0), 0) / total
+      : 0;
+
+    // Calcular mÃ©tricas de alucinaciÃ³n de forma dinÃ¡mica
+    // Consideramos alucinaciÃ³n o respuesta de baja calidad cuando el score_promedio es <= 3.0
+    const hallucinatedConversations = conversations.filter(c => (c.score_promedio || 5) <= 3.0);
+    const hallucinationCount = hallucinatedConversations.length;
+    const hallucinationRate = total > 0
+      ? parseFloat(((hallucinationCount / total) * 100).toFixed(2))
+      : 2.3; // Fallback estÃ¡tico solo si no hay datos
+    const factualAccuracy = parseFloat((100 - hallucinationRate).toFixed(2));
+
+    // ClasificaciÃ³n dinÃ¡mica de temas basados en palabras clave de la conversaciÃ³n
+    const byTopic = {
+      'Travel Info': 0,
+      'Flight Details': 0,
+      'Hotel Booking': 0,
+      'General Info': 0
+    };
+
+    if (total > 0) {
+      conversations.forEach(c => {
+        const text = `${c.pregunta || ''} ${c.respuesta || ''}`.toLowerCase();
+        if (text.includes('vuelo') || text.includes('avion') || text.includes('aerolinea') || text.includes('ticket') || text.includes('aeropuert') || text.includes('escala')) {
+          byTopic['Flight Details']++;
+        } else if (text.includes('hotel') || text.includes('hospedaje') || text.includes('alojamiento') || text.includes('reserva') || text.includes('habitacion')) {
+          byTopic['Hotel Booking']++;
+        } else if (text.includes('viaje') || text.includes('turism') || text.includes('destino') || text.includes('itinerari') || text.includes('pais') || text.includes('ciudad')) {
+          byTopic['Travel Info']++;
+        } else {
+          byTopic['General Info']++;
+        }
+      });
+    } else {
+      // Fallback estÃ¡tico si no hay conversaciones registradas
+      byTopic['Travel Info'] = 5;
+      byTopic['Flight Details'] = 12;
+      byTopic['Hotel Booking'] = 8;
+      byTopic['General Info'] = 4;
+    }
+
+    // Calcular nuevas mÃ©tricas opcionales
+    const byCategoriaUsuario = {};
+    const byOrigenPais = {};
+    const byPreguntaBase = {};
+
+    if (total > 0) {
+      conversations.forEach(c => {
+        // Por categorÃ­a de usuario
+        const categoria = c.categoria || 'No especificado';
+        byCategoriaUsuario[categoria] = (byCategoriaUsuario[categoria] || 0) + 1;
+
+        // Por origen del paÃ­s
+        const pais = c.origen_pais || 'No especificado';
+        byOrigenPais[pais] = (byOrigenPais[pais] || 0) + 1;
+
+        // Por pregunta base (si existe)
+        if (c.pregunta_base) {
+          byPreguntaBase[c.pregunta_base] = (byPreguntaBase[c.pregunta_base] || 0) + 1;
+        }
+      });
+    }
+
+    res.json({
+      status: 'success',
+      conversations: {
+        total,
+        today: conversations.filter(c => {
+          const today = new Date().toDateString();
+          const rawDate = c.timestamp || c.createdAt;
+          const cDate = rawDate ? new Date(rawDate).toDateString() : new Date().toDateString();
+          return today === cDate;
+        }).length,
+        averageDuration: 4.5,
+        averageSatisfaction: parseFloat(avgSatisfaction.toFixed(2)),
+        trend: 12.5,
+      },
+      performance: {
+        uptime: 99.8,
+        averageLatency: 245,
+        errorRate: parseFloat((hallucinationRate / 10).toFixed(2)), // Tasa de error correlacionada con alucinaciones
+        requestsPerMinute: 120,
+        peakLatency: 890,
+      },
+      hallucination: {
+        rate: hallucinationRate,
+        count: hallucinationCount,
+        factualAccuracy,
+        byTopic,
+      },
+      // Nuevas mÃ©tricas opcionales
+      usuariosMetricas: {
+        byCategoriaUsuario,
+        byOrigenPais,
+      },
+      preguntasMetricas: {
+        byPreguntaBase: Object.keys(byPreguntaBase).length > 0 ? byPreguntaBase : null,
+      },
+      database: isPostgresConnected()
+        ? 'PostgreSQL'
+        : 'Memory',
+      lastUpdated: new Date(),
+    });
+  } catch (error) {
+    console.error('Error fetching metrics:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Error al obtener metricas',
+    });
+  }
+});
+
+app.get('/api/metricas-asistente', requireAgentAdmin, async (req, res) => {
+  try {
+    const asistente = req.query.asistente || 'NORA';
+    const region = req.query.region || null;
+    const conversations = await getConversations(1000);
+    const total = conversations.length;
+    const uniqueUsers = new Set(
+      conversations
+        .map((c) => c.usuario_id || c.usuario_email || c.usuario_nombre || '')
+        .filter(Boolean),
+    );
+    const avgScore = total > 0
+      ? conversations.reduce((sum, c) => sum + (c.score_promedio || 3), 0) / total
+      : 3;
+
+    res.json({
+      asistente,
+      region,
+      total_conversaciones: total,
+      total_usuarios: uniqueUsers.size,
+      score_promedio: parseFloat(avgScore.toFixed(2)),
+      score_precision: parseFloat(avgScore.toFixed(2)),
+      score_claridad: parseFloat(avgScore.toFixed(2)),
+      score_relevancia: parseFloat(avgScore.toFixed(2)),
+      score_completitud: parseFloat(avgScore.toFixed(2)),
+      score_utilidad: parseFloat(avgScore.toFixed(2)),
+      detalles: conversations.map((c) => ({
+        id: c._id || c.id || null,
+        asistente_nombre: c.asistente_nombre || asistente,
+        region: c.region || region,
+        usuario_nombre: c.usuario_nombre || 'Usuario AnÃ³nimo',
+        usuario_email: c.usuario_email || null,
+        usuario_id: c.usuario_id || null,
+        pregunta: c.pregunta || '',
+        respuesta: c.respuesta || '',
+        score_precision: c.score_promedio || 3,
+        score_claridad: c.score_promedio || 3,
+        score_relevancia: c.score_promedio || 3,
+        score_completitud: c.score_promedio || 3,
+        score_utilidad: c.score_promedio || 3,
+        score_promedio: c.score_promedio || 3,
+        justificacion: 'EvaluaciÃ³n automÃ¡tica no disponible',
+        timestamp: c.timestamp || c.createdAt || new Date().toISOString(),
+        created_at: c.timestamp || c.createdAt || new Date().toISOString(),
+        updated_at: c.updatedAt || c.timestamp || c.createdAt || new Date().toISOString(),
+      })),
+    });
+  } catch (error) {
+    console.error('Error fetching CTM metrics:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Error al obtener metricas CTM',
+    });
+  }
+});
+
+app.get('/api/conversations/history', requireAgentAdmin, async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 24;
+    const conversations = await getConversations(1000);
+    const history = Array.from({ length: limit }, (_, i) => {
+      const start = new Date(Date.now() - (limit - i - 1) * 3600000);
+      start.setMinutes(0, 0, 0);
+      const end = new Date(start.getTime() + 3600000);
+      const items = conversations.filter((c) => {
+        const raw = c.timestamp || c.created_at || c.createdAt;
+        const date = raw ? new Date(raw) : null;
+        return date && !isNaN(date.getTime()) && date >= start && date < end;
+      });
+      const score = items.length
+        ? items.reduce((sum, c) => sum + (Number(c.score_promedio) || 0), 0) / items.length
+        : 0;
+      return {
+        timestamp: start.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }),
+        count: items.length,
+        satisfaction: parseFloat(score.toFixed(1)),
+      };
+    });
+    res.json(history);
+  } catch (error) {
+    console.error('Error fetching conversation history:', error);
+    res.status(500).json({ status: 'error', message: 'Error al obtener el historial' });
+  }
+});
+
+app.get('/api/performance/history', requireAgentAdmin, async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 24;
+    const conversations = await getConversations(1000);
+    const history = Array.from({ length: limit }, (_, i) => {
+      const start = new Date(Date.now() - (limit - i - 1) * 3600000);
+      start.setMinutes(0, 0, 0);
+      const end = new Date(start.getTime() + 3600000);
+      const items = conversations.filter((c) => {
+        const raw = c.timestamp || c.created_at || c.createdAt;
+        const date = raw ? new Date(raw) : null;
+        return date && !isNaN(date.getTime()) && date >= start && date < end;
+      });
+      const latencyItems = items.map((c) => Number(c.latency_ms || 0)).filter((n) => n > 0);
+      const latency = latencyItems.length
+        ? latencyItems.reduce((sum, n) => sum + n, 0) / latencyItems.length
+        : 0;
+      return {
+        timestamp: start.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }),
+        latency: Math.round(latency),
+        errors: 0,
+      };
+    });
+    res.json(history);
+  } catch (error) {
+    console.error('Error fetching performance history:', error);
+    res.status(500).json({ status: 'error', message: 'Error al obtener el historial de rendimiento' });
+  }
+});
+
+app.get('/api/hallucinations/history', requireAgentAdmin, async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 7;
+    const conversations = await getConversations(1000);
+    const history = Array.from({ length: limit }, (_, i) => {
+      const day = new Date(Date.now() - (limit - i - 1) * 86400000);
+      const items = conversations.filter((c) => {
+        const raw = c.timestamp || c.created_at || c.createdAt;
+        const date = raw ? new Date(raw) : null;
+        return date && !isNaN(date.getTime()) && date.toDateString() === day.toDateString();
+      });
+      const lowQuality = items.filter((c) => (Number(c.score_promedio) || 5) <= 3);
+      return {
+        date: day.toLocaleDateString('es'),
+        rate: items.length ? parseFloat(((lowQuality.length / items.length) * 100).toFixed(2)) : 0,
+        count: lowQuality.length,
+      };
+    });
+    res.json(history);
+  } catch (error) {
+    console.error('Error fetching hallucination history:', error);
+    res.status(500).json({ status: 'error', message: 'Error al obtener el historial de calidad' });
+  }
+});
+
+// ============================================
+// ENDPOINT: GET /api/conversations/:id
+// ============================================
+app.get('/api/conversations/:id', requireAgentAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    let conversation = null;
+
+    if (isPostgresConnected()) {
+      conversation = await getConversationByIdPostgres(id);
+    }
+
+    if (!conversation) {
+      conversation = fallbackStorage.conversations.find((c) => c.id === id || c._id === id) || null;
+    }
+
+    if (!conversation) {
+      return res.status(404).json({ status: 'error', error: 'Conversacion no encontrada' });
+    }
+
+    res.json(conversation);
+  } catch (error) {
+    console.error('Error fetching conversation:', error);
+    res.status(500).json({ status: 'error', message: 'Error al obtener la conversacion' });
+  }
+});
+
+// ============================================
+// Health Check
+// ============================================
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    database: isPostgresConnected()
+      ? 'PostgreSQL Connected'
+      : 'Using Memory Storage',
+    conversationsCaptured: fallbackStorage.conversations.length,
+  });
+});
+
+// ============================================
+// SPA Fallback - Serve index.html for frontend routes
+// ============================================
+app.get('*', (req, res) => {
+  // Don't serve index.html for API routes or health check
+  if (
+    req.path.startsWith('/api') ||
+    req.path === '/health' ||
+    req.path.startsWith('/assets')
+  ) {
+    res.status(404).json({
+      status: 'error',
+      message: `Endpoint no encontrado: ${req.method} ${req.path}`,
+      availableEndpoints: {
+        GET: ['/health', '/api/metrics', '/api/conversations', '/api/export/conversations'],
+        POST: ['/api/chat', '/api/capturar-conversacion']
+      }
+    });
+    return;
+  }
+
+  // Serve index.html for all other routes (frontend SPA)
+  const indexPath = path.join(frontendDistPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath, (err) => {
+      if (err) {
+        console.error('Error serving index.html:', err);
+        res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+      }
+    });
+  } else {
+    res.status(404).json({
+      status: 'error',
+      message: 'Frontend not found. Please ensure frontend is built.',
+      details: `Expected dist at: ${indexPath}`
+    });
+  }
+});
+
+// ============================================
+// Error Handlers
+// ============================================
+
+app.use((err, req, res, next) => {
+  console.error('âŒ Unhandled Error:', err);
+  res.status(500).json({
+    status: 'error',
+    message: 'Error interno del servidor',
+    error: NODE_ENV === 'development' ? err.message : 'Internal Server Error'
+  });
+});
+
+// ============================================
+// Helper Functions
+// ============================================
+async function generateAssistantResponse(pregunta, agent = DEFAULT_AGENT) {
+  const activeVersion = agent?.active_version || DEFAULT_AGENT.active_version;
+  const startedAt = Date.now();
+  const completion = await openai.chat.completions.create({
+    model: activeVersion.model || OPENAI_MODEL,
+    temperature: Number(activeVersion.temperature ?? 0.4),
+    max_tokens: Number(activeVersion.max_tokens || 350),
+    messages: [
+      {
+        role: 'system',
+        content: activeVersion.system_prompt || DEFAULT_AGENT_PROMPT,
+      },
+      { role: 'user', content: pregunta },
+    ],
+  });
+
+  return {
+    respuesta: completion.choices[0]?.message?.content?.trim() || '',
+    provider: 'openai',
+    model: activeVersion.model || OPENAI_MODEL,
+    latency_ms: Date.now() - startedAt,
+    tokens_input: completion.usage?.prompt_tokens || 0,
+    tokens_output: completion.usage?.completion_tokens || 0,
+    cost_usd: 0,
+  };
+}
+function convertToCSV(conversations) {
+  const headers = ['ID', 'Asistente', 'Pregunta', 'Respuesta', 'Usuario', 'Email', 'Score', 'Fecha'];
+  const rows = conversations.map(c => {
+    const rawDate = c.timestamp || c.createdAt;
+    let dateStr;
+    try {
+      const d = rawDate ? new Date(rawDate) : new Date();
+      dateStr = isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+    } catch (e) {
+      dateStr = new Date().toISOString();
+    }
+    return [
+      c._id || c.id,
+      c.asistente_nombre || '',
+      `"${(c.pregunta || '').replace(/"/g, '""')}"`,
+      `"${(c.respuesta || '').replace(/"/g, '""')}"`,
+      c.usuario_nombre || '',
+      c.usuario_email || '',
+      c.score_promedio || '',
+      dateStr,
+    ];
+  });
+
+  return [headers, ...rows].map(row => row.join(',')).join('\n');
+}
+
+// ============================================
+// Start Server
+// ============================================
+const startServer = async () => {
+  try {
+    // Initialize PostgreSQL (required)
+    const postgresReady = await initPostgres();
+    if (!postgresReady) {
+      console.warn('âš ï¸  PostgreSQL not available, will use memory fallback');
+    }
+
+    app.listen(PORT, () => {
+      console.log(`âœ… Nora Backend running on http://localhost:${PORT}`);
+      console.log(`ğŸ“Š Database: ${isPostgresConnected() ? 'PostgreSQL âœ…' : 'Memory Storage (Fallback) âš ï¸'}`);
+      console.log(`ğŸ¤– POST /api/chat - Generate GPT response`);
+      console.log(`ğŸ“ POST /api/capturar-conversacion - Capture conversations`);
+      console.log(`ğŸ“Š GET /api/metrics - Get metrics`);
+      console.log(`ğŸ’¾ GET /api/conversations - List all conversations`);
+      console.log(`ğŸ“¥ GET /api/export/conversations - Export as JSON/CSV`);
+      console.log(`ğŸ¥ GET /health - Health check`);
+    });
+  } catch (error) {
+    console.error('Fatal error starting server:', error);
+    process.exit(1);
+  }
+};
+
+startServer();
