@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { LlmProvider } from '../agents/llm.provider';
+import { SkillTreeService } from '../heroes/skill-tree.service';
 import { MemoryService } from './memory.service';
 
 /**
@@ -14,6 +15,7 @@ export class TrainingService {
     private readonly prisma: PrismaService,
     private readonly llm: LlmProvider,
     private readonly memory: MemoryService,
+    private readonly skillTree: SkillTreeService,
   ) {}
 
   private async ownAgentOrThrow(tenantId: string, tenantAgentId: string) {
@@ -29,10 +31,14 @@ export class TrainingService {
    */
   async practice(tenantId: string, tenantAgentId: string, prompt: string) {
     const agent = await this.ownAgentOrThrow(tenantId, tenantAgentId);
-    const memories = await this.memory.recall(tenantAgentId, prompt);
+    const [memories, skillPrompt] = await Promise.all([
+      this.memory.recall(tenantAgentId, prompt),
+      this.skillTree.buildSkillPrompt(tenantAgentId),
+    ]);
 
     const system = [
       agent.skillMd,
+      skillPrompt, // habilidades desbloqueadas del arbol (vacio si ninguna)
       memories.length
         ? `# MEMORIAS PREVIAS (lecciones aprendidas de correcciones humanas)\n${memories.map((m) => `- ${m.content}`).join('\n')}`
         : '',

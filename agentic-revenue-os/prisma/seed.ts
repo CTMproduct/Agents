@@ -4,6 +4,65 @@ import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+// Catalogo global de Heroes (curado por CTM). Arte/modelos 3D son placeholders
+// intercambiables. Cada heroe tiene un arbol lineal PASSIVE -> Q -> W -> E -> R.
+const HERO_CATALOG = [
+  {
+    slug: 'hunter',
+    name: 'The Hunter',
+    role: 'HUNTER',
+    splashUrl: 'https://models.readyplayer.me/64bfa15f0e72c63d7c3934a6.png',
+    model3dUrl: 'https://models.readyplayer.me/64bfa15f0e72c63d7c3934a6.glb',
+    passive: 'Detecta señales de intención de compra en cada mensaje del cliente.',
+    ultimate: 'Cierra con una propuesta clara y un siguiente paso concreto.',
+    skills: [
+      { code: 'P', name: 'Instinto de caza', abilitySlot: 'PASSIVE', xpCost: 0, skillMd: 'Identifica en cada mensaje la señal de intención (destino, fechas, presupuesto, urgencia) y priorízala.' },
+      { code: 'Q', name: 'Calificación relámpago', abilitySlot: 'Q', xpCost: 100, skillMd: 'Haz máximo 3 preguntas clave para calificar: destino, fechas y número de viajeros. No abrumes.' },
+      { code: 'W', name: 'Descubrimiento de dolor', abilitySlot: 'W', xpCost: 150, skillMd: 'Descubre la motivación real del viaje (aniversario, negocio, descanso) para personalizar la oferta.' },
+      { code: 'E', name: 'Propuesta de valor', abilitySlot: 'E', xpCost: 200, skillMd: 'Presenta el paquete resaltando 2-3 beneficios concretos. Nunca inventes tarifas: valida con el asesor.' },
+      { code: 'R', name: 'Cierre asistido', abilitySlot: 'R', xpCost: 400, skillMd: 'Propón un siguiente paso claro (reservar cupo, agendar llamada) y crea urgencia honesta con disponibilidad real.' },
+    ],
+  },
+  {
+    slug: 'guardian',
+    name: 'The Guardian',
+    role: 'GUARDIAN',
+    splashUrl: 'https://models.readyplayer.me/64bfa15f0e72c63d7c3934a6.png',
+    model3dUrl: 'https://models.readyplayer.me/64bfa15f0e72c63d7c3934a6.glb',
+    passive: 'Vigila la satisfacción del cliente y anticipa el riesgo de fuga (churn).',
+    ultimate: 'Recupera un cliente molesto con una solución concreta y seguimiento.',
+    skills: [
+      { code: 'P', name: 'Escudo de retención', abilitySlot: 'PASSIVE', xpCost: 0, skillMd: 'Detecta señales de insatisfacción (demoras, quejas, dudas) y trátalas con prioridad.' },
+      { code: 'Q', name: 'Escucha activa', abilitySlot: 'Q', xpCost: 100, skillMd: 'Reformula el problema del cliente para confirmar que lo entendiste antes de responder.' },
+      { code: 'W', name: 'Contención', abilitySlot: 'W', xpCost: 150, skillMd: 'Reconoce la molestia con empatía y evita prometer lo que no puedes cumplir.' },
+      { code: 'E', name: 'Resolución', abilitySlot: 'E', xpCost: 200, skillMd: 'Ofrece una solución concreta con pasos y tiempos. Escala al humano si excede tu alcance.' },
+      { code: 'R', name: 'Rescate', abilitySlot: 'R', xpCost: 400, skillMd: 'Ante un cliente a punto de irse, ofrece una alternativa de valor y agenda seguimiento explícito.' },
+    ],
+  },
+];
+
+// Idempotente: crea/actualiza el heroe por slug; crea el arbol solo si no existe.
+async function seedHeroes() {
+  for (const h of HERO_CATALOG) {
+    const hero = await prisma.heroTemplate.upsert({
+      where: { slug: h.slug },
+      update: { name: h.name, role: h.role, splashUrl: h.splashUrl, model3dUrl: h.model3dUrl, passive: h.passive, ultimate: h.ultimate, active: true },
+      create: { slug: h.slug, name: h.name, role: h.role, splashUrl: h.splashUrl, model3dUrl: h.model3dUrl, passive: h.passive, ultimate: h.ultimate },
+    });
+    if ((await prisma.skillNode.count({ where: { heroId: hero.id } })) > 0) continue;
+    const createdIds: string[] = [];
+    for (let i = 0; i < h.skills.length; i++) {
+      const n = h.skills[i];
+      const parentId: string | null = i === 0 ? null : createdIds[i - 1]; // arbol lineal
+      const row = await prisma.skillNode.create({
+        data: { heroId: hero.id, parentId, code: n.code, name: n.name, abilitySlot: n.abilitySlot, skillMd: n.skillMd, xpCost: n.xpCost },
+      });
+      createdIds.push(row.id);
+    }
+  }
+  console.log(`Heroes listos: ${HERO_CATALOG.map((h) => h.slug).join(', ')}`);
+}
+
 // Agentes internos de CTM (CRM propio) -- ver AgentDefinition.
 const AGENT_DEFINITIONS = [
   {
@@ -133,6 +192,8 @@ async function main() {
       create: t,
     });
   }
+
+  await seedHeroes();
 
   // Admin de plataforma (tu cuenta): solo se crea si se dan las dos env vars,
   // nunca con una contrasena por defecto adivinable.

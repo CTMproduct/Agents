@@ -82,6 +82,7 @@ export class AgentRunnerService {
       where: { id: tenantAgentId, tenantId },
       include: {
         skills: { where: { active: true }, orderBy: { position: 'asc' } },
+        unlockedSkills: { include: { skillNode: true }, orderBy: { unlockedAt: 'asc' } },
         _count: { select: { knowledge: { where: { active: true } } } },
       },
     });
@@ -92,7 +93,9 @@ export class AgentRunnerService {
 
     const composedPrompt = [
       agent.skillMd,
+      // Habilidades .md libres (Learning Loops) + habilidades del arbol de maestrias desbloqueadas.
       ...agent.skills.map((s) => `\n\n<!-- skill: ${s.name} -->\n${s.contentMd}`),
+      ...agent.unlockedSkills.map((u) => `\n\n<!-- habilidad ${u.skillNode.code}: ${u.skillNode.name} -->\n${u.skillNode.skillMd}`),
     ].join('');
 
     const safeToolKeys = this.tools.filterMarketplacePublic(agent.toolKeys);

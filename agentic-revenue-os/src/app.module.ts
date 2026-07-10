@@ -23,6 +23,7 @@ import { MarketplaceModule } from './marketplace/marketplace.module';
 import { AutomationsModule } from './automations/automations.module';
 import { SecurityModule } from './security/security.module';
 import { ArenaModule } from './arena/arena.module';
+import { HeroesModule } from './heroes/heroes.module';
 import { TrainingModule } from './training/training.module';
 
 @Module({
@@ -51,6 +52,7 @@ import { TrainingModule } from './training/training.module';
     AutomationsModule,
     SecurityModule,
     ArenaModule,
+    HeroesModule,
     TrainingModule,
   ],
   controllers: [RootController, HealthController],
