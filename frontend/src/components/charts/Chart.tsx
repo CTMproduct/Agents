@@ -1,10 +1,10 @@
-import React from 'react';
+﻿import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import '../../styles/Chart.css';
 
 interface ChartProps {
   title: string;
-  data: any[];
+  data: Array<Record<string, unknown>>;
   dataKey: string;
   dataKey2?: string;
   loading?: boolean;

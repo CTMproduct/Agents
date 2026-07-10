@@ -1,8 +1,26 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
 
+type ConversationHistoryPoint = {
+  timestamp: string;
+  count: number;
+  satisfaction: number;
+};
+
+type PerformanceHistoryPoint = {
+  timestamp: string;
+  latency: number;
+  errors: number;
+};
+
+type HallucinationHistoryPoint = {
+  date: string;
+  rate: number;
+  count: number;
+};
+
 export const useConversationHistory = (limit: number = 24) => {
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<ConversationHistoryPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,16 +37,18 @@ export const useConversationHistory = (limit: number = 24) => {
       }
     };
 
-    fetchData();
-    const interval = setInterval(fetchData, 30000); // Refresh every 30 seconds
-    return () => clearInterval(interval);
+    void fetchData();
+    const interval = window.setInterval(() => {
+      void fetchData();
+    }, 30000);
+    return () => window.clearInterval(interval);
   }, [limit]);
 
   return { data, loading, error };
 };
 
 export const usePerformanceHistory = (limit: number = 24) => {
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<PerformanceHistoryPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,16 +65,18 @@ export const usePerformanceHistory = (limit: number = 24) => {
       }
     };
 
-    fetchData();
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
+    void fetchData();
+    const interval = window.setInterval(() => {
+      void fetchData();
+    }, 30000);
+    return () => window.clearInterval(interval);
   }, [limit]);
 
   return { data, loading, error };
 };
 
 export const useHallucinationHistory = (limit: number = 7) => {
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<HallucinationHistoryPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,9 +93,11 @@ export const useHallucinationHistory = (limit: number = 7) => {
       }
     };
 
-    fetchData();
-    const interval = setInterval(fetchData, 60000); // Refresh every minute
-    return () => clearInterval(interval);
+    void fetchData();
+    const interval = window.setInterval(() => {
+      void fetchData();
+    }, 60000);
+    return () => window.clearInterval(interval);
   }, [limit]);
 
   return { data, loading, error };

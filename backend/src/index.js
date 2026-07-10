@@ -1,6 +1,7 @@
-require('dotenv').config();
+п»їrequire('dotenv').config();
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const express = require('express');
 const cors = require('cors');
 const OpenAI = require('openai');
@@ -10,6 +11,10 @@ const {
   initPostgres,
   saveConversationPostgres,
   getConversationsPostgres,
+  getConversationByIdPostgres,
+  getAgentsPostgres,
+  getAgentPostgres,
+  saveAgentPostgres,
   isPostgresConnected,
 } = require('./database/postgres');
 
@@ -23,13 +28,16 @@ function loadFallbackStorage() {
     }
 
     if (!fs.existsSync(FALLBACK_FILE)) {
-      fs.writeFileSync(FALLBACK_FILE, JSON.stringify({ conversations: [] }, null, 2));
+      fs.writeFileSync(FALLBACK_FILE, JSON.stringify({ conversations: [], agents: [DEFAULT_AGENT] }, null, 2));
     }
 
     const raw = fs.readFileSync(FALLBACK_FILE, 'utf-8');
     const parsed = JSON.parse(raw);
     if (parsed && Array.isArray(parsed.conversations)) {
       fallbackStorage.conversations = parsed.conversations;
+    }
+    if (parsed && Array.isArray(parsed.agents)) {
+      fallbackStorage.agents = parsed.agents;
     }
   } catch (error) {
     console.warn('вљ пёЏ  No se pudo cargar el almacenamiento de respaldo:', error.message);
@@ -51,7 +59,36 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+const EVALUATION_MODEL = process.env.OPENAI_EVALUATION_MODEL || 'gpt-4o-mini';
+const DEFAULT_AGENT_ID = 'agent_nora';
+const DEFAULT_AGENT_VERSION_ID = 'agent_nora_v1';
+const DEFAULT_AGENT_PROMPT = process.env.DEFAULT_AGENT_PROMPT || 'Eres Nora, una asistente de viajes de CTM. Responde en espanol con informacion clara, breve, amable y accionable.';
 const NODE_ENV = process.env.NODE_ENV || 'development';
+const AGENT_ADMIN_KEY = String(process.env.AGENT_ADMIN_KEY || '').trim();
+const AGENT_MODELS = new Set(
+  (process.env.ALLOWED_AGENT_MODELS || 'gpt-4o-mini,gpt-4o,gpt-4.1-mini,gpt-4.1')
+    .split(',')
+    .map((model) => model.trim())
+    .filter(Boolean),
+);
+const AI_RATE_LIMIT_WINDOW_MS = Number(process.env.AI_RATE_LIMIT_WINDOW_MS || 60_000);
+const AI_RATE_LIMIT_MAX = Number(process.env.AI_RATE_LIMIT_MAX || 30);
+
+app.disable('x-powered-by');
+if (NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  if (NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  next();
+});
 
 // CORS configuration
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || FRONTEND_URL)
@@ -90,8 +127,8 @@ const corsOptions = {
     console.warn(`вљ пёЏ CORS blocked origin: ${origin}`);
     return callback(null, false);
   },
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  methods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Agent-Admin-Key'],
   credentials: true,
 };
 
@@ -145,7 +182,7 @@ if (fs.existsSync(frontendDistPath)) {
 
 // Middleware API despuГ©s de servir frontend/assets
 app.use(cors(corsOptions));
-app.use(express.json());
+app.use(express.json({ limit: '64kb' }));
 
 // OpenAI Client
 if (!process.env.OPENAI_API_KEY) {
@@ -156,17 +193,33 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const fallbackStorage = {
-  conversations: [],
-  metrics: {
-    total: 0,
-    today: 0,
-    averageSatisfaction: 0,
-    hallucinations: 0,
+const DEFAULT_AGENT = {
+  id: DEFAULT_AGENT_ID,
+  slug: 'nora',
+  name: 'Nora',
+  description: 'Asistente de viajes y turismo de CTM',
+  status: 'published',
+  default_language: 'es',
+  avatar: 'plane',
+  active_version: {
+    id: DEFAULT_AGENT_VERSION_ID,
+    version: 1,
+    system_prompt: DEFAULT_AGENT_PROMPT,
+    model: OPENAI_MODEL,
+    temperature: 0.4,
+    max_tokens: 350,
+    tools: [],
+    guardrails: {},
   },
 };
 
+const fallbackStorage = {
+  conversations: [],
+  agents: [DEFAULT_AGENT],
+};
+
 loadFallbackStorage();
+ensureFallbackDefaultAgent();
 
 // Helper function to save conversation (PostgreSQL only)
 async function saveConversation(data) {
@@ -230,671 +283,408 @@ async function getConversations(limit = 100) {
   return result;
 }
 
-// API status route
-app.get('/api/status', (req, res) => {
-  res.json({
-    status: 'online',
-    message: 'Nora API Backend is running',
-    database: isPostgresConnected()
-      ? 'PostgreSQL вњ…'
-      : 'Memory (fallback) вљ пёЏ',
-    endpoints: {
-      metrics: '/api/metrics',
-      health: '/health',
-      chat: '/api/chat',
-      chatCapture: '/api/chat-capturar',
-      capture: '/api/capturar-conversacion',
-      conversations: '/api/conversations',
-      export: '/api/export/conversations',
-      frontend: '/',
-    }
-  });
-});
-// ============================================
-// ENDPOINT: POST /api/chat
-// ============================================
-app.post('/api/chat', async (req, res) => {
-  try {
-    const { pregunta } = req.body;
+function slugify(value) {
+  return String(value || 'agent')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 64) || 'agent';
+}
 
-    if (!pregunta || !pregunta.trim()) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Falta campo requerido: pregunta',
-      });
-    }
+function httpError(statusCode, message) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+}
 
-    const respuesta = await generateAssistantResponse(pregunta.trim());
+function hasOwn(object, key) {
+  return Object.prototype.hasOwnProperty.call(object, key);
+}
 
-    if (!respuesta) {
-      return res.status(502).json({
-        status: 'error',
-        message: 'No se pudo generar respuesta con OpenAI',
-      });
-    }
-
-    return res.status(200).json({
-      status: 'success',
-      respuesta,
-      modelo: OPENAI_MODEL,
-    });
-  } catch (error) {
-    console.error('Error generating chat response:', error);
-    return res.status(500).json({
-      status: 'error',
-      message: 'Error al generar respuesta',
-      error: error.message,
-    });
+function validateAgentPayload(data = {}) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw httpError(400, 'Los datos del agente no son validos');
   }
-});
 
-// ============================================
-// ENDPOINT: POST /api/chat-capturar
-// ============================================
-app.post('/api/chat-capturar', async (req, res) => {
-  try {
-    const {
-      pregunta,
-      usuario_nombre,
-      usuario_email,
-      usuario_id,
-      region = 'Nora',
-      asistente_nombre = 'NORA',
-    } = req.body;
+  const name = String(data.name || '').trim();
+  if (!name) throw httpError(400, 'El nombre del agente es requerido');
+  if (name.length > 80) throw httpError(400, 'El nombre no puede superar 80 caracteres');
 
-    if (!pregunta || !pregunta.trim()) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Falta campo requerido: pregunta',
-      });
+  const slug = slugify(data.slug || name);
+  const description = String(data.description || '').trim();
+  if (description.length > 500) throw httpError(400, 'La descripcion no puede superar 500 caracteres');
+
+  const status = String(data.status || 'draft').trim().toLowerCase();
+  if (!['draft', 'published', 'paused'].includes(status)) {
+    throw httpError(400, 'El estado del agente no es valido');
+  }
+
+  const payload = {
+    ...data,
+    name,
+    slug,
+    description,
+    status,
+    default_language: String(data.default_language || 'es').trim().slice(0, 12) || 'es',
+    avatar: String(data.avatar || 'bot').trim().slice(0, 40) || 'bot',
+  };
+
+  if (hasOwn(data, 'system_prompt')) {
+    const prompt = String(data.system_prompt || '').trim();
+    if (!prompt) throw httpError(400, 'El prompt del sistema es requerido');
+    if (prompt.length > 20_000) throw httpError(400, 'El prompt no puede superar 20000 caracteres');
+    payload.system_prompt = prompt;
+  }
+
+  if (hasOwn(data, 'model')) {
+    const model = String(data.model || '').trim();
+    if (!AGENT_MODELS.has(model)) throw httpError(400, 'El modelo seleccionado no esta permitido');
+    payload.model = model;
+  }
+
+  if (hasOwn(data, 'temperature')) {
+    const temperature = Number(data.temperature);
+    if (!Number.isFinite(temperature) || temperature < 0 || temperature > 2) {
+      throw httpError(400, 'La temperatura debe estar entre 0 y 2');
     }
+    payload.temperature = temperature;
+  }
 
-    const respuesta = await generateAssistantResponse(pregunta.trim());
-
-    if (!respuesta) {
-      return res.status(502).json({
-        status: 'error',
-        message: 'No se pudo generar respuesta con OpenAI',
-      });
+  if (hasOwn(data, 'max_tokens')) {
+    const maxTokens = Number(data.max_tokens);
+    if (!Number.isInteger(maxTokens) || maxTokens < 80 || maxTokens > 4000) {
+      throw httpError(400, 'Max tokens debe estar entre 80 y 4000');
     }
-
-    const conversationData = {
-      asistente_nombre,
-      pregunta,
-      respuesta,
-      usuario_nombre,
-      usuario_email,
-      usuario_id,
-      region,
-      status: 'capturada',
-      score_promedio: 4.5,
-    };
-
-    const savedConversation = await saveConversation(conversationData);
-
-    return res.status(200).json({
-      status: 'success',
-      respuesta,
-      modelo: OPENAI_MODEL,
-      conversationId: savedConversation.id || savedConversation._id,
-      score_promedio: savedConversation.score_promedio,
-      database: isPostgresConnected() ? 'PostgreSQL' : 'Memory',
-    });
-  } catch (error) {
-    console.error('Error generating and capturing conversation:', error);
-    return res.status(500).json({
-      status: 'error',
-      message: 'Error al generar y capturar la conversaciГіn',
-      error: error.message,
-    });
+    payload.max_tokens = maxTokens;
   }
-});
 
-// ============================================
-// ENDPOINT: POST /api/capturar-conversacion
-// ============================================
-app.post('/api/capturar-conversacion', async (req, res) => {
-  try {
-    const {
-      asistente_nombre,
-      pregunta,
-      respuesta,
-      usuario_nombre,
-      usuario_email,
-      usuario_id,
-      region,
-      status = 'capturada',
-      // Nuevos campos opcionales
-      categoria,
-      origen_pais,
-      pregunta_base,
-      fuente,
-      tipo_interaccion,
-    } = req.body;
-
-    // ValidaciГіn
-    if (!asistente_nombre || !pregunta || !respuesta) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Faltan campos requeridos: asistente_nombre, pregunta, respuesta',
-      });
-    }
-
-    let scorePromedio = 4.5;
-    try {
-      const evaluation = await openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          {
-            role: 'system',
-            content: 'Eres un evaluador de calidad. EvalГєa en escala 1-5. Responde solo con un nГєmero.',
-          },
-          {
-            role: 'user',
-            content: `Pregunta: ${pregunta}\n\nRespuesta: ${respuesta}\n\nCalifica:`,
-          },
-        ],
-        max_tokens: 10,
-      });
-
-      const scoreText = evaluation.choices[0].message.content.trim();
-      scorePromedio = parseFloat(scoreText) || 4.5;
-    } catch (err) {
-      console.error('Error evaluating with OpenAI:', err.message);
-    }
-
-    // Guardar conversaciГіn con campos opcionales
-    const conversationData = {
-      asistente_nombre,
-      pregunta,
-      respuesta,
-      usuario_nombre,
-      usuario_email,
-      usuario_id,
-      region,
-      status,
-      score_promedio: scorePromedio,
-      // Campos opcionales con defaults
-      categoria: categoria || 'No especificado',
-      origen_pais: origen_pais || 'No especificado',
-      pregunta_base: pregunta_base || null,
-      fuente: fuente || 'GPT_ACTION',
-      tipo_interaccion: tipo_interaccion || 'respuesta_gpt',
-    };
-
-    const savedConversation = await saveConversation(conversationData);
-
-    const database = isPostgresConnected()
-      ? 'PostgreSQL'
-      : 'Memory';
-
-    res.status(200).json({
-      status: 'success',
-      message: 'Captura registrada correctamente',
-      data: {
-        conversationId: savedConversation.id || savedConversation._id,
-      },
-      score_promedio: scorePromedio,
-      database: database,
-    });
-  } catch (error) {
-    console.error('Error capturing conversation:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Error al capturar la conversaciГіn',
-      error: error.message,
-    });
+  if (hasOwn(data, 'tools') && !Array.isArray(data.tools)) {
+    throw httpError(400, 'Las herramientas del agente deben ser una lista');
   }
-});
 
-// ============================================
-// ENDPOINT: GET /api/conversations
-// ============================================
-app.get('/api/conversations', async (req, res) => {
-  try {
-    const limit = parseInt(req.query.limit) || 100;
-    const conversations = await getConversations(limit);
-
-    const database = isPostgresConnected()
-      ? 'PostgreSQL'
-      : 'Memory';
-
-    res.json({
-      status: 'success',
-      count: conversations.length,
-      data: conversations,
-      database: database,
-    });
-  } catch (error) {
-    console.error('Error fetching conversations:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Error al obtener conversaciones',
-      error: error.message,
-    });
-  }
-});
-
-// ============================================
-// ENDPOINT: GET /api/export/conversations (CSV/JSON)
-// ============================================
-app.get('/api/export/conversations', async (req, res) => {
-  try {
-    const format = req.query.format || 'json'; // 'json' o 'csv'
-    const conversations = await getConversations(1000);
-
-    if (format === 'csv') {
-      // Convert to CSV
-      const csv = convertToCSV(conversations);
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', 'attachment; filename=conversations.csv');
-      res.send(csv);
-    } else {
-      // JSON
-      res.setHeader('Content-Type', 'application/json');
-      res.setHeader('Content-Disposition', 'attachment; filename=conversations.json');
-      res.json({
-        status: 'success',
-        exportedAt: new Date(),
-        count: conversations.length,
-        data: conversations,
-      });
-    }
-  } catch (error) {
-    console.error('Error exporting conversations:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Error al exportar conversaciones',
-      error: error.message,
-    });
-  }
-});
-
-// ============================================
-// ENDPOINTS: MГ©tricas
-// ============================================
-app.get('/api/metrics', async (req, res) => {
-  try {
-    const conversations = await getConversations();
-    const total = conversations.length;
-    const avgSatisfaction = total > 0 
-      ? conversations.reduce((sum, c) => sum + (c.score_promedio || 0), 0) / total
-      : 0;
-
-    // Calcular mГ©tricas de alucinaciГіn de forma dinГЎmica
-    // Consideramos alucinaciГіn o respuesta de baja calidad cuando el score_promedio es <= 3.0
-    const hallucinatedConversations = conversations.filter(c => (c.score_promedio || 5) <= 3.0);
-    const hallucinationCount = hallucinatedConversations.length;
-    const hallucinationRate = total > 0 
-      ? parseFloat(((hallucinationCount / total) * 100).toFixed(2)) 
-      : 2.3; // Fallback estГЎtico solo si no hay datos
-    const factualAccuracy = parseFloat((100 - hallucinationRate).toFixed(2));
-
-    // ClasificaciГіn dinГЎmica de temas basados en palabras clave de la conversaciГіn
-    const byTopic = {
-      'Travel Info': 0,
-      'Flight Details': 0,
-      'Hotel Booking': 0,
-      'General Info': 0
-    };
-
-    if (total > 0) {
-      conversations.forEach(c => {
-        const text = `${c.pregunta || ''} ${c.respuesta || ''}`.toLowerCase();
-        if (text.includes('vuelo') || text.includes('avion') || text.includes('aerolinea') || text.includes('ticket') || text.includes('aeropuert') || text.includes('escala')) {
-          byTopic['Flight Details']++;
-        } else if (text.includes('hotel') || text.includes('hospedaje') || text.includes('alojamiento') || text.includes('reserva') || text.includes('habitacion')) {
-          byTopic['Hotel Booking']++;
-        } else if (text.includes('viaje') || text.includes('turism') || text.includes('destino') || text.includes('itinerari') || text.includes('pais') || text.includes('ciudad')) {
-          byTopic['Travel Info']++;
-        } else {
-          byTopic['General Info']++;
-        }
-      });
-    } else {
-      // Fallback estГЎtico si no hay conversaciones registradas
-      byTopic['Travel Info'] = 5;
-      byTopic['Flight Details'] = 12;
-      byTopic['Hotel Booking'] = 8;
-      byTopic['General Info'] = 4;
-    }
-
-    // Calcular nuevas mГ©tricas opcionales
-    const byCategoriaUsuario = {};
-    const byOrigenPais = {};
-    const byPreguntaBase = {};
-
-    if (total > 0) {
-      conversations.forEach(c => {
-        // Por categorГ­a de usuario
-        const categoria = c.categoria || 'No especificado';
-        byCategoriaUsuario[categoria] = (byCategoriaUsuario[categoria] || 0) + 1;
-
-        // Por origen del paГ­s
-        const pais = c.origen_pais || 'No especificado';
-        byOrigenPais[pais] = (byOrigenPais[pais] || 0) + 1;
-
-        // Por pregunta base (si existe)
-        if (c.pregunta_base) {
-          byPreguntaBase[c.pregunta_base] = (byPreguntaBase[c.pregunta_base] || 0) + 1;
-        }
-      });
-    }
-
-    res.json({
-      status: 'success',
-      conversations: {
-        total,
-        today: conversations.filter(c => {
-          const today = new Date().toDateString();
-          const rawDate = c.timestamp || c.createdAt;
-          const cDate = rawDate ? new Date(rawDate).toDateString() : new Date().toDateString();
-          return today === cDate;
-        }).length,
-        averageDuration: 4.5,
-        averageSatisfaction: parseFloat(avgSatisfaction.toFixed(2)),
-        trend: 12.5,
-      },
-      performance: {
-        uptime: 99.8,
-        averageLatency: 245,
-        errorRate: parseFloat((hallucinationRate / 10).toFixed(2)), // Tasa de error correlacionada con alucinaciones
-        requestsPerMinute: 120,
-        peakLatency: 890,
-      },
-      hallucination: {
-        rate: hallucinationRate,
-        count: hallucinationCount,
-        factualAccuracy,
-        byTopic,
-      },
-      // Nuevas mГ©tricas opcionales
-      usuariosMetricas: {
-        byCategoriaUsuario,
-        byOrigenPais,
-      },
-      preguntasMetricas: {
-        byPreguntaBase: Object.keys(byPreguntaBase).length > 0 ? byPreguntaBase : null,
-      },
-      database: isPostgresConnected()
-        ? 'PostgreSQL'
-        : 'Memory',
-      lastUpdated: new Date(),
-    });
-  } catch (error) {
-    console.error('Error fetching metrics:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Error al obtener mГ©tricas',
-      error: error.message,
-    });
-  }
-});
-
-app.get('/api/metricas-asistente', async (req, res) => {
-  try {
-    const asistente = req.query.asistente || 'NORA';
-    const region = req.query.region || null;
-    const conversations = await getConversations(1000);
-    const total = conversations.length;
-    const uniqueUsers = new Set(
-      conversations
-        .map((c) => c.usuario_id || c.usuario_email || c.usuario_nombre || '')
-        .filter(Boolean),
-    );
-    const avgScore = total > 0
-      ? conversations.reduce((sum, c) => sum + (c.score_promedio || 3), 0) / total
-      : 3;
-
-    res.json({
-      asistente,
-      region,
-      total_conversaciones: total,
-      total_usuarios: uniqueUsers.size,
-      score_promedio: parseFloat(avgScore.toFixed(2)),
-      score_precision: parseFloat(avgScore.toFixed(2)),
-      score_claridad: parseFloat(avgScore.toFixed(2)),
-      score_relevancia: parseFloat(avgScore.toFixed(2)),
-      score_completitud: parseFloat(avgScore.toFixed(2)),
-      score_utilidad: parseFloat(avgScore.toFixed(2)),
-      detalles: conversations.map((c) => ({
-        id: c._id || c.id || null,
-        asistente_nombre: c.asistente_nombre || asistente,
-        region: c.region || region,
-        usuario_nombre: c.usuario_nombre || 'Usuario AnГіnimo',
-        usuario_email: c.usuario_email || null,
-        usuario_id: c.usuario_id || null,
-        pregunta: c.pregunta || '',
-        respuesta: c.respuesta || '',
-        score_precision: c.score_promedio || 3,
-        score_claridad: c.score_promedio || 3,
-        score_relevancia: c.score_promedio || 3,
-        score_completitud: c.score_promedio || 3,
-        score_utilidad: c.score_promedio || 3,
-        score_promedio: c.score_promedio || 3,
-        justificacion: 'EvaluaciГіn automГЎtica no disponible',
-        timestamp: c.timestamp || c.createdAt || new Date().toISOString(),
-        created_at: c.timestamp || c.createdAt || new Date().toISOString(),
-        updated_at: c.updatedAt || c.timestamp || c.createdAt || new Date().toISOString(),
-      })),
-    });
-  } catch (error) {
-    console.error('Error fetching CTM metrics:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Error al obtener mГ©tricas CTM',
-      error: error.message,
-    });
-  }
-});
-
-app.get('/api/conversations/history', async (req, res) => {
-  try {
-    const limit = parseInt(req.query.limit) || 24;
-
-    // Fallback - PostgreSQL version would query ConversationHistory
-    const history = Array.from({ length: limit }, (_, i) => ({
-      timestamp: new Date(Date.now() - (limit - i - 1) * 3600000).toLocaleTimeString(),
-      count: Math.floor(Math.random() * 50 + 20),
-      satisfaction: parseFloat((Math.random() * 0.8 + 3.8).toFixed(1)),
-    }));
-    res.json(history);
-  } catch (error) {
-    console.error('Error fetching conversation history:', error);
-    res.status(500).json({ status: 'error', error: error.message });
-  }
-});
-
-app.get('/api/performance/history', async (req, res) => {
-  try {
-    const limit = parseInt(req.query.limit) || 24;
-
-    // Fallback - PostgreSQL version would query PerformanceHistory
-    const history = Array.from({ length: limit }, (_, i) => ({
-      timestamp: new Date(Date.now() - (limit - i - 1) * 3600000).toLocaleTimeString(),
-      latency: Math.floor(Math.random() * 400 + 100),
-      errors: Math.floor(Math.random() * 5),
-    }));
-    res.json(history);
-  } catch (error) {
-    console.error('Error fetching performance history:', error);
-    res.status(500).json({ status: 'error', error: error.message });
-  }
-});
-
-app.get('/api/hallucinations/history', async (req, res) => {
-  try {
-    const limit = parseInt(req.query.limit) || 7;
-
-    // Fallback - PostgreSQL version would query HallucinationHistory
-    const history = Array.from({ length: limit }, (_, i) => ({
-      date: new Date(Date.now() - (limit - i - 1) * 86400000).toLocaleDateString(),
-      rate: parseFloat((Math.random() * 3 + 1).toFixed(2)),
-      count: Math.floor(Math.random() * 10 + 2),
-    }));
-    res.json(history);
-  } catch (error) {
-    console.error('Error fetching hallucination history:', error);
-    res.status(500).json({ status: 'error', error: error.message });
-  }
-});
-
-// ============================================
-// ENDPOINT: GET /api/conversations/:id
-// ============================================
-app.get('/api/conversations/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    // Fallback - PostgreSQL version would query from database
-    const conversation = fallbackStorage.conversations.find((c) => c.id === id);
-    if (!conversation) {
-      return res.status(404).json({ status: 'error', error: 'ConversaciГіn no encontrada' });
-    }
-
-    res.json(conversation);
-  } catch (error) {
-    console.error('Error fetching conversation:', error);
-    res.status(500).json({ status: 'error', error: error.message });
-  }
-});
-
-// ============================================
-// Health Check
-// ============================================
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    database: isPostgresConnected()
-      ? 'PostgreSQL Connected'
-      : 'Using Memory Storage',
-    conversationsCaptured: fallbackStorage.conversations.length,
-  });
-});
-
-// ============================================
-// SPA Fallback - Serve index.html for frontend routes
-// ============================================
-app.get('*', (req, res) => {
-  // Don't serve index.html for API routes or health check
   if (
-    req.path.startsWith('/api') ||
-    req.path === '/health' ||
-    req.path.startsWith('/assets')
+    hasOwn(data, 'guardrails') &&
+    (!data.guardrails || typeof data.guardrails !== 'object' || Array.isArray(data.guardrails))
   ) {
-    res.status(404).json({
-      status: 'error',
-      message: `Endpoint no encontrado: ${req.method} ${req.path}`,
-      availableEndpoints: {
-        GET: ['/health', '/api/metrics', '/api/conversations', '/api/export/conversations'],
-        POST: ['/api/chat', '/api/capturar-conversacion']
-      }
-    });
-    return;
+    throw httpError(400, 'Las reglas del agente deben ser un objeto');
   }
 
-  // Serve index.html for all other routes (frontend SPA)
-  const indexPath = path.join(frontendDistPath, 'index.html');
-  if (fs.existsSync(indexPath)) {
-    res.sendFile(indexPath, (err) => {
-      if (err) {
-        console.error('Error serving index.html:', err);
-        res.status(500).json({ status: 'error', message: 'Internal Server Error' });
-      }
-    });
-  } else {
-    res.status(404).json({
-      status: 'error',
-      message: 'Frontend not found. Please ensure frontend is built.',
-      details: `Expected dist at: ${indexPath}`
-    });
-  }
-});
-
-// ============================================
-// Error Handlers
-// ============================================
-
-app.use((err, req, res, next) => {
-  console.error('вќЊ Unhandled Error:', err);
-  res.status(500).json({
-    status: 'error',
-    message: 'Error interno del servidor',
-    error: NODE_ENV === 'development' ? err.message : 'Internal Server Error'
-  });
-});
-
-// ============================================
-// Helper Functions
-// ============================================
-async function generateAssistantResponse(pregunta) {
-  const completion = await openai.chat.completions.create({
-    model: OPENAI_MODEL,
-    messages: [
-      {
-        role: 'system',
-        content: 'Eres Nora, una asistente de viajes. Responde en espaГ±ol con informaciГіn clara, breve y accionable.',
-      },
-      { role: 'user', content: pregunta },
-    ],
-    max_tokens: 350,
-  });
-
-  return completion.choices[0]?.message?.content?.trim() || '';
+  return payload;
 }
 
-function convertToCSV(conversations) {
-  const headers = ['ID', 'Asistente', 'Pregunta', 'Respuesta', 'Usuario', 'Email', 'Score', 'Fecha'];
-  const rows = conversations.map(c => {
-    const rawDate = c.timestamp || c.createdAt;
-    let dateStr;
-    try {
-      const d = rawDate ? new Date(rawDate) : new Date();
-      dateStr = isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
-    } catch (e) {
-      dateStr = new Date().toISOString();
-    }
-    return [
-      c._id || c.id,
-      c.asistente_nombre || '',
-      `"${(c.pregunta || '').replace(/"/g, '""')}"`,
-      `"${(c.respuesta || '').replace(/"/g, '""')}"`,
-      c.usuario_nombre || '',
-      c.usuario_email || '',
-      c.score_promedio || '',
-      dateStr,
-    ];
-  });
-
-  return [headers, ...rows].map(row => row.join(',')).join('\n');
+function secureCompare(left, right) {
+  const leftBuffer = Buffer.from(String(left || ''));
+  const rightBuffer = Buffer.from(String(right || ''));
+  return leftBuffer.length === rightBuffer.length && crypto.timingSafeEqual(leftBuffer, rightBuffer);
 }
 
-// ============================================
-// Start Server
-// ============================================
-const startServer = async () => {
-  try {
-    // Initialize PostgreSQL (required)
-    const postgresReady = await initPostgres();
-    if (!postgresReady) {
-      console.warn('вљ пёЏ  PostgreSQL not available, will use memory fallback');
+function hasAgentAdminAccess(req) {
+  if (!AGENT_ADMIN_KEY) return NODE_ENV !== 'production';
+  return secureCompare(req.get('X-Agent-Admin-Key'), AGENT_ADMIN_KEY);
+}
+
+function requireAgentAdmin(req, res, next) {
+  if (!AGENT_ADMIN_KEY && NODE_ENV === 'production') {
+    return res.status(503).json({
+      status: 'error',
+      message: 'La administracion de agentes aun no esta configurada',
+    });
+  }
+
+  if (!hasAgentAdminAccess(req)) {
+    return res.status(401).json({ status: 'error', message: 'Clave de administracion incorrecta' });
+  }
+
+  return next();
+}
+
+function toPublicAgent(agent) {
+  if (!agent) return null;
+  const activeVersion = agent.active_version || {};
+  return {
+    id: agent.id,
+    slug: agent.slug,
+    name: agent.name,
+    description: agent.description,
+    status: agent.status,
+    default_language: agent.default_language,
+    avatar: agent.avatar,
+    active_version: {
+      id: activeVersion.id,
+      version: activeVersion.version,
+      model: activeVersion.model,
+    },
+  };
+}
+
+function createRateLimiter(windowMs, maxRequests) {
+  const clients = new Map();
+  const safeWindowMs = Number.isFinite(windowMs) && windowMs >= 1000 ? windowMs : 60_000;
+  const safeMax = Number.isFinite(maxRequests) && maxRequests >= 1 ? maxRequests : 30;
+
+  return (req, res, next) => {
+    const now = Date.now();
+    const key = req.ip || req.socket.remoteAddress || 'unknown';
+    const current = clients.get(key);
+    const entry = !current || now - current.startedAt >= safeWindowMs
+      ? { startedAt: now, count: 0 }
+      : current;
+
+    entry.count += 1;
+    clients.set(key, entry);
+    res.setHeader('X-RateLimit-Limit', String(safeMax));
+    res.setHeader('X-RateLimit-Remaining', String(Math.max(safeMax - entry.count, 0)));
+
+    if (entry.count > safeMax) {
+      res.setHeader('Retry-After', String(Math.ceil((safeWindowMs - (now - entry.startedAt)) / 1000)));
+      return res.status(429).json({
+        status: 'error',
+        message: 'Demasiadas solicitudes. Intenta nuevamente en un momento.',
+      });
     }
 
-    app.listen(PORT, () => {
-      console.log(`вњ… Nora Backend running on http://localhost:${PORT}`);
-      console.log(`рџ“Љ Database: ${isPostgresConnected() ? 'PostgreSQL вњ…' : 'Memory Storage (Fallback) вљ пёЏ'}`);
-      console.log(`рџ¤– POST /api/chat - Generate GPT response`);
-      console.log(`рџ“ќ POST /api/capturar-conversacion - Capture conversations`);
-      console.log(`рџ“Љ GET /api/metrics - Get metrics`);
-      console.log(`рџ’ѕ GET /api/conversations - List all conversations`);
-      console.log(`рџ“Ґ GET /api/export/conversations - Export as JSON/CSV`);
-      console.log(`рџЏҐ GET /health - Health check`);
-    });
-  } catch (error) {
-    console.error('Fatal error starting server:', error);
-    process.exit(1);
-  }
-};
+    if (clients.size > 2000) {
+      for (const [clientKey, value] of clients) {
+        if (now - value.startedAt >= safeWindowMs) clients.delete(clientKey);
+      }
+    }
 
-startServer();
+    return next();
+  };
+}
+
+const aiRateLimit = createRateLimiter(AI_RATE_LIMIT_WINDOW_MS, AI_RATE_LIMIT_MAX);
+
+function ensureFallbackDefaultAgent() {
+  if (!Array.isArray(fallbackStorage.agents)) {
+    fallbackStorage.agents = [];
+  }
+
+  const existingIndex = fallbackStorage.agents.findIndex(
+    (agent) => agent.id === DEFAULT_AGENT_ID || agent.slug =лЌц¶‰ћЛkєwµзH	ТЭ[›ЫЪЪ[™ЙО€€	СЩ[™\[[™›ЙО€€NВ‚€Y€
+Э[€
+HВ€ЫЫќ™\њШ][ЫњЛ™›Ь‘XXЪ
+ИO€В€ЫЫњЭ^H	ШЛњ™YЭ[ќH	ЙЯH	ШЛњ™\ЬY\ЭH	ЙЯXќУЭЩ\ђШ\ЩJ
+NВ€Y€
+^љ[ЫY\К	ЭќY[ЙКH^љ[ЫY\К	Ш]љ[Ы‰КH^љ[ЫY\К	ШY\›Ы[™XIКH^љ[ЫY\К	ЭXЪЩ]	КH^љ[ЫY\К	ШY\›ЬY\ќ	КH^љ[ЫY\К	Щ\ШШ[IКJHВ€ћUЬXЦЙС›YЪ]Z[ЙЧJКОВ€H[ЩHY€
+^љ[ЫY\К	ЪЭ[	КH^љ[ЫY\К	ЪЬЬYZ™IКH^љ[ЫY\К	Ш[Ъ[ZY[ќЙКH^љ[ЫY\К	Ь™\Щ\ќIКH^љ[ЫY\К	ЪXљ]XЪ[Ы‰КJHВ€ћUЬXЦЙТЭ[›ЫЪЪ[™ЙЧJКОВ€H[ЩHY€
+^љ[ЫY\К	ЭљXZ™IКH^љ[ЫY\К	Э\љ\ЫIКH^љ[ЫY\К	Щ\Э[›ЙКH^љ[ЫY\К	Ъ][™\\љIКH^љ[ЫY\К	ЬZ\ЙКH^љ[ЫY\К	ШЪ]YY	КJHВ€ћUЬXЦЙХ]™[[™›ЙЧJКОВ€H[ЩHВ€ћUЬXЦЙСЩ[™\[[™›ЙЧJКОВ€B€JNВ€H[ЩHВ€ЛИ[XЪИ\Э0и]XЫИЪH›И^HЫЫќ™\њШXЪ[Ы™\И™YЪ\ЭY\В€ћUЬXЦЙХ]™[[™›ЙЧHHNВ€ћUЬXЦЙС›YЪ]Z[ЙЧHHLЋВ€ћUЬXЦЙТЭ[›ЫЪЪ[™ЙЧHHВ€ћUЬXЦЙСЩ[™\[[™›ЙЧHHВ€B‚€ЛИШ[Э[\€ќY]\Иpк]љXШ\ИЬЪ[Ы[\В€ЫЫњЭћPШ]YЫЬљXU\ЭX\љ[ИHЯNВ€ЫЫњЭћSЬљYЩ[”Z\ИHЯNВ€ЫЫњЭћT™YЭ[ќP\ЩHHЯNВ‚€Y€
+Э[€
+HВ€ЫЫќ™\њШ][ЫњЛ™›Ь‘XXЪ
+ИO€В€ЛИЬ€Ш]YЫЬ°лXHH\ЭX\љ[В€ЫЫњЭШ]YЫЬљXHHЛШ]YЫЬљXH	У›И\ЬXЪYљXШYЙОВ€ћPШ]YЫЬљXU\ЭX\љ[ЦШШ]YЫЬљXWHH
+ћPШ]YЫЬљXU\ЭX\љ[ЦШШ]YЫЬљXWH
+H
+ИNВ‚€ЛИЬ€ЬљYЩ[€[pл\В€ЫЫњЭZ\ИHЛ›ЬљYЩ[—ЬZ\И	У›И\ЬXЪYљXШYЙОВ€ћSЬљYЩ[”Z\ЦЬZ\ЧHH
+ћSЬљYЩ[”Z\ЦЬZ\ЧH
+H
+ИNВ‚€ЛИЬ€™YЭ[ќH\ЩH
+ЪH^\ЭJB€Y€
+Лњ™YЭ[ќWШ\ЩJHВ€ћT™YЭ[ќP\ЩVШЛњ™YЭ[ќWШ\ЩWHH
+ћT™YЭ[ќP\ЩVШЛњ™YЭ[ќWШ\ЩWH
+H
+ИNВ€B€JNВ€B‚€™\ЛљњЫЫЉВ€Э]\О€	ЬЭXШЩ\ЬЙЛ€ЫЫќ™\њШ][ЫњО€В€Э[€Щ^N€ЫЫќ™\њШ][ЫњЛ™љ[\ЉИO€В€ЫЫњЭЩ^HH™]И]J
+KќС]TЭљ[™К
+NВ€ЫЫњЭ]С]HHЛќ[Y\Э[\ЛЬ™X]Y]В€ЫЫњЭС]HH]С]HИ™]И]J]С]JKќС]TЭљ[™К
+H€™]И]J
+KќС]TЭљ[™К
+NВ€™]\›€Щ^HOOHС]NВ€JK›[™Э€]™\YЩQ\][ЫЋ€ЌK€]™\YЩTШ]\ЩXЭ[ЫЋ€\њЩQ›Ш]
+]™ФШ]\ЩXЭ[Ы‹ќСљ^Y
+ЉJK€™[™€L‹ЌK€K€\™›Ь›X[ЩN€В€\[YN€NKЋ€]™\YЩS][ЮN€ЌK€\њ›Ь”]N€\њЩQ›Ш]
+
+[XЪ[][Ы”]HИL
+KќСљ^Y
+ЉJKЛИ\ШHH\њ›Ь€ЫЬњ™[XЪ[ЫYHЫЫ€[XЪ[XЪ[Ы™\В€™\]Y\ЭФ\“Z[ќ]N€LЊ€XZУ][ЮN€L€K€[XЪ[][ЫЋ€В€]N€[XЪ[][Ы”]K€ЫЭ[ќ€[XЪ[][ЫђЫЭ[ќ€XЭX[XШЭ\XЮK€ћUЬXЛ€K€ЛИќY]\Иpк]љXШ\ИЬЪ[Ы[\В€\ЭX\љ[ЬУY]љXШ\О€В€ћPШ]YЫЬљXU\ЭX\љ[Л€ћSЬљYЩ[”Z\Л€K€™YЭ[ќ\УY]љXШ\О€В€ћT™YЭ[ќP\ЩN€Шљ™XЭљЩ^\КћT™YЭ[ќP\ЩJK›[™Э€ИћT™YЭ[ќP\ЩH€ќ[€K€]X\ЩN€\ФЬЭЬ™\РЫЫ›™XЭY
+
+B€И	ФЬЭЬ™TФS	В€€	УY[[ЬћIЛ€\Э\]Y€™]И]J
+K€JNВ€HШ]Ъ
+\њ›ЬЉHВ€ЫЫњЫЫK™\њ›ЬЉ	С\њ›Ь€™]Ъ[™ИY]љXЬО‰Л\њ›ЬЉNВ€™\ЛњЭ]\КL
+KљњЫЫЉВ€Э]\О€	Щ\њ›Ь‰Л€Y\ЬШYЩN€	С\њ›Ь€[Шќ[™\€Y]љXШ\ЙЛ€JNВ€BџJNВ‚\™Щ]
+	ЛШ\KЫY]љXШ\ЛX\Ъ\Э[ќIЛ™\]Z\™PYЩ[ќYZ[‹\Ю[И
+™\K™\КHO€В€ћHВ€ЫЫњЭ\Ъ\Э[ќHH™\Kњ]Y\ћK\Ъ\Э[ќH	У“ФђIОВ€ЫЫњЭ™YЪ[Ы€H™\Kњ]Y\ћKњ™YЪ[Ы€ќ[В€ЫЫњЭЫЫќ™\њШ][ЫњИH]ШZ]Щ]ЫЫќ™\њШ][ЫњКL
+NВ€ЫЫњЭЭ[HЫЫќ™\њШ][ЫњЛ›[™ЭВ€ЫЫњЭ[љ\]YU\Щ\њИH™]ИЩ]
+€ЫЫќ™\њШ][ЫњВ€›X\
+
+КHO€Лќ\ЭX\љ[ЧЪYЛќ\ЭX\љ[ЧЩ[XZ[Лќ\ЭX\љ[ЧЫ›ЫXњ™H	ЙКB€™љ[\Љ›ЫЫX[ЉK€
+NВ€ЫЫњЭ]™ФШЫЬ™HHЭ[€€ИЫЫќ™\њШ][ЫњЛњ™YXЩJ
+Э[KКHO€Э[H
+И
+ЛњШЫЬ™WЬ›ЫYY[ИКK
+HИЭ[€€ОВ‚€™\ЛљњЫЫЉВ€\Ъ\Э[ќK€™YЪ[Ы‹€Э[ШЫЫќ™\њШXЪ[Ы™\О€Э[€Э[Э\ЭX\љ[ЬО€[љ\]YU\Щ\њЛњЪ^™K€ШЫЬ™WЬ›ЫYY[О€\њЩQ›Ш]
+]™ФШЫЬ™KќСљ^Y
+ЉJK€ШЫЬ™WЬ™XЪ\Ъ[ЫЋ€\њЩQ›Ш]
+]™ФШЫЬ™KќСљ^Y
+ЉJK€ШЫЬ™WШЫ\љYY€\њЩQ›Ш]
+]™ФШЫЬ™KќСљ^Y
+ЉJK€ШЫЬ™WЬ™[][ЪXN€\њЩQ›Ш]
+]™ФШЫЬ™KќСљ^Y
+ЉJK€ШЫЬ™WШЫЫ\]]Y€\њЩQ›Ш]
+]™ФШЫЬ™KќСљ^Y
+ЉJK€ШЫЬ™WЭ][YY€\њЩQ›Ш]
+]™ФШЫЬ™KќСљ^Y
+ЉJK€][\О€ЫЫќ™\њШ][ЫњЛ›X\
+
+КHO€
+В€Y€Л—ЪYЛљYќ[€\Ъ\Э[ќWЫ›ЫXњ™N€Л\Ъ\Э[ќWЫ›ЫXњ™H\Ъ\Э[ќK€™YЪ[ЫЋ€Лњ™YЪ[Ы€™YЪ[Ы‹€\ЭX\љ[ЧЫ›ЫXњ™N€Лќ\ЭX\љ[ЧЫ›ЫXњ™H	Х\ЭX\љ[И[°мЫљ[[ЙЛ€\ЭX\љ[ЧЩ[XZ[€Лќ\ЭX\љ[ЧЩ[XZ[ќ[€\ЭX\љ[ЧЪY€Лќ\ЭX\љ[ЧЪYќ[€™YЭ[ќN€Лњ™YЭ[ќH	ЙЛ€™\ЬY\ЭN€Лњ™\ЬY\ЭH	ЙЛ€ШЫЬ™WЬ™XЪ\Ъ[ЫЋ€ЛњШЫЬ™WЬ›ЫYY[ИЛ€ШЫЬ™WШЫ\љYY€ЛњШЫЬ™WЬ›ЫYY[ИЛ€ШЫЬ™WЬ™[][ЪXN€ЛњШЫЬ™WЬ›ЫYY[ИЛ€ШЫЬ™WШЫЫ\]]Y€ЛњШЫЬ™WЬ›ЫYY[ИЛ€ШЫЬ™WЭ][YY€ЛњШЫЬ™WЬ›ЫYY[ИЛ€ШЫЬ™WЬ›ЫYY[О€ЛњШЫЬ™WЬ›ЫYY[ИЛ€ќ\ЭYљXШXЪ[ЫЋ€	С][XXЪpмЫ€]]Ыpи]XШH›И\ЬЫљX›IЛ€[Y\Э[\€Лќ[Y\Э[\ЛЬ™X]Y]™]И]J
+KќТTУФЭљ[™К
+K€Ь™X]YШ]€Лќ[Y\Э[\ЛЬ™X]Y]™]И]J
+KќТTУФЭљ[™К
+K€\]YШ]€Лќ\]Y]Лќ[Y\Э[\ЛЬ™X]Y]™]И]J
+KќТTУФЭљ[™К
+K€JJK€JNВ€HШ]Ъ
+\њ›ЬЉHВ€ЫЫњЫЫK™\њ›ЬЉ	С\њ›Ь€™]Ъ[™ИХHY]љXЬО‰Л\њ›ЬЉNВ€™\ЛњЭ]\КL
+KљњЫЫЉВ€Э]\О€	Щ\њ›Ь‰Л€Y\ЬШYЩN€	С\њ›Ь€[Шќ[™\€Y]љXШ\ИХIЛ€JNВ€BџJNВ‚\™Щ]
+	ЛШ\KШЫЫќ™\њШ][ЫњЛЪ\ЭЬћIЛ™\]Z\™PYЩ[ќYZ[‹\Ю[И
+™\K™\КHO€В€ћHВ€ЫЫњЭ[Z]H\њЩR[ќ
+™\Kњ]Y\ћK›[Z]
+HЌВ€ЫЫњЭЫЫќ™\њШ][ЫњИH]ШZ]Щ]ЫЫќ™\њШ][ЫњКL
+NВ€ЫЫњЭ\ЭЬћHH\њ^K™њ›ЫJИ[™Э€[Z]K
+ЛJHO€В€ЫЫњЭЭ\ќH™]И]J]K››ЭК
+HH
+[Z]HHHJH
+€НЊ
+NВ€Э\ќњЩ]Z[ќ]\К
+NВ€ЫЫњЭ[™H™]И]JЭ\ќ™Щ][YJ
+H
+ИНЊ
+NВ€ЫЫњЭ][\ИHЫЫќ™\њШ][ЫњЛ™љ[\Љ
+КHO€В€ЫЫњЭ]ИHЛќ[Y\Э[\ЛЬ™X]YШ]ЛЬ™X]Y]В€ЫЫњЭ]HH]ИИ™]И]J]КH€ќ[В€™]\›€]H	‰€Z\УSЉ]K™Щ][YJ
+JH	‰€]HЏHЭ\ќ	‰€]H[™В€JNВ€ЫЫњЭШЫЬ™HH][\Л›[™Э€И][\Лњ™YXЩJ
+Э[KКHO€Э[H
+И
+ќ[X™\ЉЛњШЫЬ™WЬ›ЫYY[КH
+K
+HИ][\Л›[™Э€€В€™]\›€В€[Y\Э[\€Э\ќќУШШ[U[YTЭљ[™К	Щ\ЙЛИЭ\Ћ€	М‹YYЪ]	ЛZ[ќ]N€	М‹YYЪ]	ИJK€ЫЭ[ќ€][\Л›[™Э€Ш]\ЩXЭ[ЫЋ€\њЩQ›Ш]
+ШЫЬ™KќСљ^Y
+JJK€NВ€JNВ€™\ЛљњЫЫЉ\ЭЬћJNВ€HШ]Ъ
+\њ›ЬЉHВ€ЫЫњЫЫK™\њ›ЬЉ	С\њ›Ь€™]Ъ[™ИЫЫќ™\њШ][Ы€\ЭЬћN‰Л\њ›ЬЉNВ€™\ЛњЭ]\КL
+KљњЫЫЉИЭ]\О€	Щ\њ›Ь‰ЛY\ЬШYЩN€	С\њ›Ь€[Шќ[™\€[\ЭЬљX[	ИJNВ€BџJNВ‚\™Щ]
+	ЛШ\KЬ\™›Ь›X[ЩKЪ\ЭЬћIЛ™\]Z\™PYЩ[ќYZ[‹\Ю[И
+™\K™\КHO€В€ћHВ€ЫЫњЭ[Z]H\њЩR[ќ
+™\Kњ]Y\ћK›[Z]
+HЌВ€ЫЫњЭЫЫќ™\њШ][ЫњИH]ШZ]Щ]ЫЫќ™\њШ][ЫњКL
+NВ€ЫЫњЭ\ЭЬћHH\њ^K™њ›ЫJИ[™Э€[Z]K
+ЛJHO€В€ЫЫњЭЭ\ќH™]И]J]K››ЭК
+HH
+[Z]HHHJH
+€НЊ
+NВ€Э\ќњЩ]Z[ќ]\К
+NВ€ЫЫњЭ[™H™]И]JЭ\ќ™Щ][YJ
+H
+ИНЊ
+NВ€ЫЫњЭ][\ИHЫЫќ™\њШ][ЫњЛ™љ[\Љ
+КHO€В€ЫЫњЭ]ИHЛќ[Y\Э[\ЛЬ™X]YШ]ЛЬ™X]Y]В€ЫЫњЭ]HH]ИИ™]И]J]КH€ќ[В€™]\›€]H	‰€Z\УSЉ]K™Щ][YJ
+JH	‰€]HЏHЭ\ќ	‰€]H[™В€JNВ€ЫЫњЭ][ЮR][\ИH][\Л›X\
+
+КHO€ќ[X™\ЉЛ›][ЮWЫ\И
+JK™љ[\Љ
+ЉHO€€€
+NВ€ЫЫњЭ][ЮHH][ЮR][\Л›[™Э€И][ЮR][\Лњ™YXЩJ
+Э[KЉHO€Э[H
+И‹
+HИ][ЮR][\Л›[™Э€€В€™]\›€В€[Y\Э[\€Э\ќќУШШ[U[YTЭљ[™К	Щ\ЙЛИЭ\Ћ€	М‹YYЪ]	ЛZ[ќ]N€	М‹YYЪ]	ИJK€][ЮN€X]њ›Э[™
+][ЮJK€\њ›ЬњО€€NВ€JNВ€™\ЛљњЫЫЉ\ЭЬћJNВ€HШ]Ъ
+\њ›ЬЉHВ€ЫЫњЫЫK™\њ›ЬЉ	С\њ›Ь€™]Ъ[™И\™›Ь›X[ЩH\ЭЬћN‰Л\њ›ЬЉNВ€™\ЛњЭ]\КL
+KљњЫЫЉИЭ]\О€	Щ\њ›Ь‰ЛY\ЬШYЩN€	С\њ›Ь€[Шќ[™\€[\ЭЬљX[H™[™[ZY[ќЙИJNВ€BџJNВ‚\™Щ]
+	ЛШ\KЪ[XЪ[][ЫњЛЪ\ЭЬћIЛ™\]Z\™PYЩ[ќYZ[‹\Ю[И
+™\K™\КHO€В€ћHВ€ЫЫњЭ[Z]H\њЩR[ќ
+™\Kњ]Y\ћK›[Z]
+HОВ€ЫЫњЭЫЫќ™\њШ][ЫњИH]ШZ]Щ]ЫЫќ™\њШ][ЫњКL
+NВ€ЫЫњЭ\ЭЬћHH\њ^K™њ›ЫJИ[™Э€[Z]K
+ЛJHO€В€ЫЫњЭ^HH™]И]J]K››ЭК
+HH
+[Z]HHHJH
+€Ќ
+NВ€ЫЫњЭ][\ИHЫЫќ™\њШ][ЫњЛ™љ[\Љ
+КHO€В€ЫЫњЭ]ИHЛќ[Y\Э[\ЛЬ™X]YШ]ЛЬ™X]Y]В€ЫЫњЭ]HH]ИИ™]И]J]КH€ќ[В€™]\›€]H	‰€Z\УSЉ]K™Щ][YJ
+JH	‰€]KќС]TЭљ[™К
+HOOH^KќС]TЭљ[™К
+NВ€JNВ€ЫЫњЭЭФ]X[]HH][\Л™љ[\Љ
+КHO€
+ќ[X™\ЉЛњШЫЬ™WЬ›ЫYY[КHJHHКNВ€™]\›€В€]N€^KќУШШ[Q]TЭљ[™К	Щ\ЙКK€]N€][\Л›[™ЭИ\њЩQ›Ш]
+
+
+ЭФ]X[]K›[™ЭИ][\Л›[™Э
+H
+€L
+KќСљ^Y
+ЉJH€€ЫЭ[ќ€ЭФ]X[]K›[™Э€NВ€JNВ€™\ЛљњЫЫЉ\ЭЬћJNВ€HШ]Ъ
+\њ›ЬЉHВ€ЫЫњЫЫK™\њ›ЬЉ	С\њ›Ь€™]Ъ[™И[XЪ[][Ы€\ЭЬћN‰Л\њ›ЬЉNВ€™\ЛњЭ]\КL
+KљњЫЫЉИЭ]\О€	Щ\њ›Ь‰ЛY\ЬШYЩN€	С\њ›Ь€[Шќ[™\€[\ЭЬљX[HШ[YY	ИJNВ€BџJNВ‚‹ЛИOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB‹ЛИS‘ТS•€СUШ\KШЫЫќ™\њШ][ЫњЛОљY‹ЛИOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB\™Щ]
+	ЛШ\KШЫЫќ™\њШ][ЫњЛОљY	Л™\]Z\™PYЩ[ќYZ[‹\Ю[И
+™\K™\КHO€В€ћHВ€ЫЫњЭИYHH™\Kњ\[\ОВ€]ЫЫќ™\њШ][Ы€Hќ[В‚€Y€
+\ФЬЭЬ™\РЫЫ›™XЭY
+
+JHВ€ЫЫќ™\њШ][Ы€H]ШZ]Щ]ЫЫќ™\њШ][ЫђћRYЬЭЬ™\КY
+NВ€B‚€Y€
+XЫЫќ™\њШ][ЫЉHВ€ЫЫќ™\њШ][Ы€H[XЪФЭЬYЩKЫЫќ™\њШ][ЫњЛ™љ[™
+
+КHO€ЛљYOOHYЛ—ЪYOOHY
+Hќ[В€B‚€Y€
+XЫЫќ™\њШ][ЫЉHВ€™]\›€™\ЛњЭ]\К
+KљњЫЫЉИЭ]\О€	Щ\њ›Ь‰Л\њ›ЬЋ€	РЫЫќ™\њШXЪ[Ы€›И[ЫЫќYIИJNВ€B‚€™\ЛљњЫЫЉЫЫќ™\њШ][ЫЉNВ€HШ]Ъ
+\њ›ЬЉHВ€ЫЫњЫЫK™\њ›ЬЉ	С\њ›Ь€™]Ъ[™ИЫЫќ™\њШ][ЫЋ‰Л\њ›ЬЉNВ€™\ЛњЭ]\КL
+KљњЫЫЉИЭ]\О€	Щ\њ›Ь‰ЛY\ЬШYЩN€	С\њ›Ь€[Шќ[™\€HЫЫќ™\њШXЪ[Ы‰ИJNВ€BџJNВ‚‹ЛИOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB‹ЛИX[ЪXЪВ‹ЛИOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB\™Щ]
+	ЛЪX[	Л
+™\K™\КHO€В€™\ЛњЭ]\КЊ
+KљњЫЫЉВ€Э]\О€	ЫЪЙЛ€[Y\Э[\€™]И]J
+KќТTУФЭљ[™К
+K€]X\ЩN€\ФЬЭЬ™\РЫЫ›™XЭY
+
+B€И	ФЬЭЬ™TФSЫЫ›™XЭY	В€€	Х\Ъ[™ИY[[ЬћHЭЬYЩIЛ€ЫЫќ™\њШ][ЫњРШ\\™Y€[XЪФЭЬYЩKЫЫќ™\њШ][ЫњЛ›[™Э€JNВџJNВ‚‹ЛИOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB‹ЛИФH[XЪИHЩ\ќ™H[™^љ[›Ь€њ›Ыќ[™›Э]\В‹ЛИOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB\™Щ]
+	К‰Л
+™\K™\КHO€В€ЛИЫ‰ЭЩ\ќ™H[™^љ[›Ь€TH›Э]\ИЬ€X[ЪXЪВ€Y€
+€™\Kњ]њЭ\ќХЪ]
+	ЛШ\IКH€™\Kњ]OOH	ЛЪX[	И€™\Kњ]њЭ\ќХЪ]
+	ЛШ\ЬЩ]ЙКB€
+HВ€™\ЛњЭ]\К
+KљњЫЫЉВ€Э]\О€	Щ\њ›Ь‰Л€Y\ЬШYЩN€[™Ъ[ќ›И[ЫЫќYО€	Ь™\K›Y]ЩH	Ь™\Kњ]X€]Z[X›Q[™Ъ[ќО€В€СU€ЙЛЪX[	Л	ЛШ\KЫY]љXЬЙЛ	ЛШ\KШЫЫќ™\њШ][ЫњЙЛ	ЛШ\KЩ^ЬќШЫЫќ™\њШ][ЫњЙЧK€ФХ€ЙЛШ\KШЪ]	Л	ЛШ\KШШ\\\‹XЫЫќ™\њШXЪ[Ы‰ЧB€B€JNВ€™]\›ЋВ€B‚€ЛИЩ\ќ™H[™^љ[›Ь€[Э\€›Э]\И
+њ›Ыќ[™ФJB€ЫЫњЭ[™^]H]љ›Ъ[Љњ›Ыќ[™\Э]	Ъ[™^љ[	КNВ€Y€
+њЛ™^\ЭФЮ[К[™^]
+JHВ€™\ЛњЩ[™љ[J[™^]
+\њЉHO€В€Y€
+\њЉHВ€ЫЫњЫЫK™\њ›ЬЉ	С\њ›Ь€Щ\ќљ[™И[™^љ[‰Л\њЉNВ€™\ЛњЭ]\КL
+KљњЫЫЉИЭ]\О€	Щ\њ›Ь‰ЛY\ЬШYЩN€	Т[ќ\›[Щ\ќ™\€\њ›Ь‰ИJNВ€B€JNВ€H[ЩHВ€™\ЛњЭ]\К
+KљњЫЫЉВ€Э]\О€	Щ\њ›Ь‰Л€Y\ЬШYЩN€	Сњ›Ыќ[™›Э›Э[™€X\ЩH[њЭ\™Hњ›Ыќ[™\ИќZ[‰Л€]Z[О€^XЭY\Э]€	Ъ[™^]X€JNВ€BџJNВ‚‹ЛИOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB‹ЛИ\њ›Ь€[™\њВ‹ЛИOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB‚\ќ\ЩJ
+\њ‹™\K™\Л™^
+HO€В€ЫЫњЫЫK™\њ›ЬЉ	ш§c[љ[™Y\њ›ЬЋ‰Л\њЉNВ€™\ЛњЭ]\КL
+KљњЫЫЉВ€Э]\О€	Щ\њ›Ь‰Л€Y\ЬШYЩN€	С\њ›Ь€[ќ\››И[Щ\ќљYЬ‰Л€\њ›ЬЋ€“СWСS•€OOH	Щ]™[ЬY[ќ	ИИ\њ‹›Y\ЬШYЩH€	Т[ќ\›[Щ\ќ™\€\њ›Ь‰В€JNВџJNВ‚‹ЛИOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB‹ЛИ[\€ќ[Э[ЫњВ‹ЛИOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB\Ю[Иќ[Э[Ы€Щ[™\]P\ЬЪ\Э[ќ™\ЬЫњЩJ™YЭ[ќKYЩ[ќHQђUSРQСS•
+HВ€ЫЫњЭXЭ]™U™\њЪ[Ы€HYЩ[ќЛXЭ]™WЭ™\њЪ[Ы€QђUSРQСS•XЭ]™WЭ™\њЪ[ЫЋВ€ЫЫњЭЭ\ќY]H]K››ЭК
+NВ€ЫЫњЭЫЫ\][Ы€H]ШZ]Ь[ZKЪ]ЫЫ\][ЫњЛЬ™X]JВ€[Щ[€XЭ]™U™\њЪ[Ы‹›[Щ[ФSђRWУSСS€[\\]\™N€ќ[X™\ЉXЭ]™U™\њЪ[Ы‹ќ[\\]\™HПИЌ
+K€X^ЭЪЩ[њО€ќ[X™\ЉXЭ]™U™\њЪ[Ы‹›X^ЭЪЩ[њИНL
+K€Y\ЬШYЩ\О€В€В€›ЫN€	ЬЮ\Э[IЛ€ЫЫќ[ќ€XЭ]™U™\њЪ[Ы‹њЮ\Э[WЬ›Ы\QђUSРQСS•Ф“УT€K€И›ЫN€	Э\Щ\‰ЛЫЫќ[ќ€™YЭ[ќHK€K€JNВ‚€™]\›€В€™\ЬY\ЭN€ЫЫ\][Ы‹ЪЪXЩ\ЦМOЛ›Y\ЬШYЩOЛЫЫќ[ќЛќљ[J
+H	ЙЛ€›ЭљY\Ћ€	ЫЬ[ZIЛ€[Щ[€XЭ]™U™\њЪ[Ы‹›[Щ[ФSђRWУSСS€][ЮWЫ\О€]K››ЭК
+HHЭ\ќY]€ЪЩ[њЧЪ[њ]€ЫЫ\][Ы‹ќ\ШYЩOЛњ›Ы\ЭЪЩ[њИ€ЪЩ[њЧЫЭ]]€ЫЫ\][Ы‹ќ\ШYЩOЛЫЫ\][Ы—ЭЪЩ[њИ€ЫЬЭЭ\Щ€€NВџB™ќ[Э[Ы€ЫЫќ™\ќРФХЉЫЫќ™\њШ][ЫњКHВ€ЫЫњЭXY\њИHЙТQ	Л	Р\Ъ\Э[ќIЛ	Ф™YЭ[ќIЛ	Ф™\ЬY\ЭIЛ	Х\ЭX\љ[ЙЛ	С[XZ[	Л	ФШЫЬ™IЛ	С™XЪIЧNВ€ЫЫњЭ›ЭЬИHЫЫќ™\њШ][ЫњЛ›X\
+ИO€В€ЫЫњЭ]С]HHЛќ[Y\Э[\ЛЬ™X]Y]В€]]TЭЋВ€ћHВ€ЫЫњЭH]С]HИ™]И]J]С]JH€™]И]J
+NВ€]TЭ€H\УSЉ™Щ][YJ
+JHИ™]И]J
+KќТTУФЭљ[™К
+H€ќТTУФЭљ[™К
+NВ€HШ]Ъ
+JHВ€]TЭ€H™]И]J
+KќТTУФЭљ[™К
+NВ€B€™]\›€В€Л—ЪYЛљY€Л\Ъ\Э[ќWЫ›ЫXњ™H	ЙЛ€‰КЛњ™YЭ[ќH	ЙКKњ™\XЩJИ‹ЩЛ	И€‰К_H€‰КЛњ™\ЬY\ЭH	ЙКKњ™\XЩJИ‹ЩЛ	И€‰К_H€Лќ\ЭX\љ[ЧЫ›ЫXњ™H	ЙЛ€Лќ\ЭX\љ[ЧЩ[XZ[	ЙЛ€ЛњШЫЬ™WЬ›ЫYY[И	ЙЛ€]TЭ‹€NВ€JNВ‚€™]\›€ЪXY\њЛ‹‹њ›ЭЬЧK›X\
+›ЭИO€›ЭЛљ›Ъ[Љ	Л	КJKљ›Ъ[Љ	Ч‰КNВџB‚‹ЛИOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB‹ЛИЭ\ќЩ\ќ™\‚‹ЛИOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOBЫЫњЭЭ\ќЩ\ќ™\€H\Ю[И
+
+HO€В€ћHВ€ЛИ[љ]X[^™HЬЭЬ™TФS
+™\]Z\™Y
+B€ЫЫњЭЬЭЬ™\Ф™XYHH]ШZ][љ]ЬЭЬ™\К
+NВ€Y€
+\ЬЭЬ™\Ф™XYJHВ€ЫЫњЫЫKќШ\›Љ	ш¦Ё;о#ИЬЭЬ™TФS›Э]Z[X›KЪ[\ЩHY[[ЬћH[XЪЙКNВ€B‚€\›\Э[ЉФ•
+
+HO€В€ЫЫњЫЫK›ЩК8§!H›ЬHXЪЩ[™ќ[›љ[™ИЫ€‹ЛЫШШ[ЬЭ‰ФФ•X
+NВ€ЫЫњЫЫK›ЩК<'дв€]X\ЩN€	Ъ\ФЬЭЬ™\РЫЫ›™XЭY
+
+HИ	ФЬЭЬ™TФS8§!IИ€	УY[[ЬћHЭЬYЩH
+[XЪКH8¦Ё;о#ЙЯX
+NВ€ЫЫњЫЫK›ЩК<'й%€ФХШ\KШЪ]HЩ[™\]HФ™\ЬЫњЩX
+NВ€ЫЫњЫЫK›ЩК<'дзHФХШ\KШШ\\\‹XЫЫќ™\њШXЪ[Ы€HШ\\™HЫЫќ™\њШ][ЫњШ
+NВ€ЫЫњЫЫK›ЩК<'дв€СUШ\KЫY]љXЬИHЩ]Y]љXЬШ
+NВ€ЫЫњЫЫK›ЩК<'дЇ€СUШ\KШЫЫќ™\њШ][ЫњИH\Э[ЫЫќ™\њШ][ЫњШ
+NВ€ЫЫњЫЫK›ЩК<'дйHСUШ\KЩ^ЬќШЫЫќ™\њШ][ЫњИH^Ьќ\И”УУ‹РФХ
+NВ€ЫЫњЫЫK›ЩК<'гйHСUЪX[HX[ЪXЪШ
+NВ€JNВ€HШ]Ъ
+\њ›ЬЉHВ€ЫЫњЫЫK™\њ›ЬЉ	С][\њ›Ь€Э\ќ[™ИЩ\ќ™\Ћ‰Л\њ›ЬЉNВ€›ШЩ\ЬЛ™^]
+JNВ€BџNВ‚њЭ\ќЩ\ќ™\Љ
+NВ

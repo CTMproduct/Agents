@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import type { AgentMetrics } from '../types';
 import { apiService } from '../services/api';
 import { DEFAULT_METRICS, mergeMetricsWithDefaults } from '../constants/defaults';
@@ -41,18 +41,21 @@ export const useMetrics = (
   }, []);
 
   useEffect(() => {
-    // Fetch immediately on mount
-    fetchMetrics();
+    const timerId = window.setTimeout(() => {
+      void fetchMetrics();
+    }, 0);
 
-    // Set up interval for real-time updates
-    let intervalId: ReturnType<typeof setInterval> | undefined;
+    let intervalId: ReturnType<typeof window.setInterval> | undefined;
     if (isRealtime) {
-      intervalId = setInterval(fetchMetrics, refreshInterval);
+      intervalId = window.setInterval(() => {
+        void fetchMetrics();
+      }, refreshInterval);
     }
 
     return () => {
+      window.clearTimeout(timerId);
       if (intervalId) {
-        clearInterval(intervalId);
+        window.clearInterval(intervalId);
       }
     };
   }, [fetchMetrics, refreshInterval, isRealtime]);

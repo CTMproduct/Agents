@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Clasificador automático de conversaciones en 9 categorías
  * Basado en patrones de palabras clave
  */
@@ -205,7 +205,34 @@ export function generateBasePregunta(pregunta: string): string {
  * @param datos Datos básicos de la conversación
  * @returns Datos preparados con categoría y pregunta_base
  */
-export function prepareConversationData(datos: any) {
+interface ConversationInput {
+  pregunta?: string;
+  respuesta?: string;
+  agent_id?: string;
+  agent_slug?: string;
+  categoria?: string;
+  pregunta_base?: string;
+  fuente?: string;
+  tipo_interaccion?: string;
+  asistente_nombre?: string;
+  region?: string;
+  usuario_nombre?: string | null;
+  usuario_email?: string | null;
+  usuario_id?: string | null;
+}
+
+export function prepareConversationData<T extends ConversationInput>(datos: T): T & {
+  categoria: string;
+  pregunta_base: string;
+  fuente: string;
+  tipo_interaccion: string;
+  asistente_nombre: string;
+  region: string;
+  usuario_nombre: string | null;
+  usuario_email: string | null;
+  usuario_id: string | null;
+  status: string;
+} {
   const pregunta = datos.pregunta || '';
 
   return {

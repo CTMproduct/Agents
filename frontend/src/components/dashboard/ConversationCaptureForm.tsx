@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+﻿import { useEffect, useState } from 'react';
+import type { FormEvent } from 'react';
 import { apiService } from '../../services/api';
-import type { CaptureConversationPayload, CaptureConversationResponse } from '../../types';
+import type { Agent, CaptureConversationPayload, CaptureConversationResponse } from '../../types';
 import '../../styles/ConversationCaptureForm.css';
 
 interface ConversationCaptureFormProps {
   onCaptureSuccess?: () => Promise<void>;
 }
 
-export const ConversationCaptureForm: React.FC<ConversationCaptureFormProps> = ({
-  onCaptureSuccess
-}) => {
+export const ConversationCaptureForm = ({ onCaptureSuccess }: ConversationCaptureFormProps) => {
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [selectedAgentId, setSelectedAgentId] = useState('');
   const [pregunta, setPregunta] = useState('');
   const [respuesta, setRespuesta] = useState('');
   const [usuarioNombre, setUsuarioNombre] = useState('');
@@ -20,7 +21,25 @@ export const ConversationCaptureForm: React.FC<ConversationCaptureFormProps> = (
   const [error, setError] = useState<string | null>(null);
   const [responseData, setResponseData] = useState<CaptureConversationResponse | null>(null);
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  useEffect(() => {
+    let active = true;
+
+    apiService.getAgents().then((data) => {
+      if (!active) return;
+      setAgents(data);
+      if (data[0]?.id) {
+        setSelectedAgentId((current) => current || data[0].id);
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const selectedAgent = agents.find((agent) => agent.id === selectedAgentId) || null;
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
     setError(null);
@@ -34,6 +53,7 @@ export const ConversationCaptureForm: React.FC<ConversationCaptureFormProps> = (
       if (!respuestaValue) {
         const chatResponse = await apiService.chat({
           pregunta: preguntaValue,
+          agent_id: selectedAgentId || undefined,
           usuario_nombre: usuarioNombre.trim() || undefined,
           usuario_email: usuarioEmail.trim() || undefined,
           usuario_id: usuarioId.trim() || undefined,
@@ -41,7 +61,7 @@ export const ConversationCaptureForm: React.FC<ConversationCaptureFormProps> = (
         });
 
         if (!chatResponse?.respuesta) {
-          setError('No se pudo generar respuesta automática con GPT.');
+          setError('No se pudo generar respuesta automatica con GPT.');
           return;
         }
 
@@ -50,7 +70,8 @@ export const ConversationCaptureForm: React.FC<ConversationCaptureFormProps> = (
       }
 
       const payload: CaptureConversationPayload = {
-        asistente_nombre: 'NORA',
+        agent_id: selectedAgentId || undefined,
+        asistente_nombre: selectedAgent?.name || 'NORA',
         pregunta: preguntaValue,
         respuesta: respuestaValue,
         usuario_nombre: usuarioNombre.trim() || undefined,
@@ -61,31 +82,25 @@ export const ConversationCaptureForm: React.FC<ConversationCaptureFormProps> = (
 
       const response = await apiService.captureConversation(payload);
       if (!response) {
-        setError('No se pudo enviar la conversación. Revisa la conexión al backend.');
+        setError('No se pudo enviar la conversacion. Revisa la conexion al backend.');
       } else {
         setResponseData(response);
-        setMessage(response.mensaje || response.message || 'Conversación enviada correctamente.');
+        setMessage(response.mensaje || response.message || 'Conversacion enviada correctamente.');
 
-        // Limpiar formulario después de envío exitoso
         setPregunta('');
         setRespuesta('');
         setUsuarioNombre('');
         setUsuarioEmail('');
         setUsuarioId('');
 
-        // Refrescar métricas del dashboard si hay callback
         if (onCaptureSuccess) {
-          try {
-            await onCaptureSuccess();
-          } catch (err) {
-            console.warn('⚠️ No se pudieron refrescar las métricas:', err);
-          }
+          await onCaptureSuccess();
         }
       }
     } catch (caught) {
       const errorMsg = caught instanceof Error ? caught.message : 'Error desconocido';
       setError(`Error al enviar: ${errorMsg}`);
-      console.error('Error capturando conversación:', caught);
+      console.error('Error capturando conversacion:', caught);
     } finally {
       setLoading(false);
     }
@@ -95,15 +110,39 @@ export const ConversationCaptureForm: React.FC<ConversationCaptureFormProps> = (
     <div className="capture-form">
       <div className="capture-form__header">
         <div>
-          <h3>Enviar conversación a Nora</h3>
-          <p>Envía la conversación en vivo al backend para que el action la capture.</p>
+          <h3>Enviar conversacion</h3>
+          <p>Genera o registra una respuesta usando el agente seleccionado.</p>
         </div>
-        <span className="capture-form__tag">POST /api/capturar-conversacion</span>
       </div>
 
       <form className="capture-form__form" onSubmit={handleSubmit}>
         <div className="capture-form__grid">
           <label className="capture-form__field">
+            <span>Agente</span>
+            <select value={selectedAgentId} onChange={(event) => setSelectedAgentId(event.target.value)}>
+              {agents.length === 0 ? (
+                <option value="">NORA</option>
+              ) : (
+                agents.map((agent) => (
+                  <option key={agent.id} value={agent.id}>
+                    {agent.name} ({agent.status})
+                  </option>
+                ))
+              )}
+            </select>
+          </label>
+
+          <label className="capture-form__field">
+            <span>ID de usuario</span>
+            <input
+              type="text"
+              value={usuarioId}
+              onChange={(event) => setUsuarioId(event.target.value)}
+              placeholder="user-123"
+            />
+          </label>
+
+          <label className="capture-form__field capture-form__field--wide">
             <span>Pregunta</span>
             <textarea
               value={pregunta}
@@ -114,13 +153,13 @@ export const ConversationCaptureForm: React.FC<ConversationCaptureFormProps> = (
             />
           </label>
 
-          <label className="capture-form__field">
+          <label className="capture-form__field capture-form__field--wide">
             <span>Respuesta</span>
             <textarea
               value={respuesta}
               onChange={(event) => setRespuesta(event.target.value)}
               rows={3}
-              placeholder="Déjalo vacío para generar respuesta automática con GPT."
+              placeholder="Dejalo vacio para generar respuesta automatica con GPT."
             />
           </label>
 
@@ -130,7 +169,7 @@ export const ConversationCaptureForm: React.FC<ConversationCaptureFormProps> = (
               type="text"
               value={usuarioNombre}
               onChange={(event) => setUsuarioNombre(event.target.value)}
-              placeholder="Natalia Gómez"
+              placeholder="Natalia Gomez"
             />
           </label>
 
@@ -143,21 +182,11 @@ export const ConversationCaptureForm: React.FC<ConversationCaptureFormProps> = (
               placeholder="natagomez@gmail.com"
             />
           </label>
-
-          <label className="capture-form__field">
-            <span>ID de usuario</span>
-            <input
-              type="text"
-              value={usuarioId}
-              onChange={(event) => setUsuarioId(event.target.value)}
-              placeholder="user-123"
-            />
-          </label>
         </div>
 
         <div className="capture-form__actions">
           <button type="submit" disabled={loading} className="capture-form__button">
-            {loading ? 'Procesando...' : 'Enviar Conversación'}
+            {loading ? 'Procesando...' : 'Enviar conversacion'}
           </button>
         </div>
 
@@ -165,8 +194,13 @@ export const ConversationCaptureForm: React.FC<ConversationCaptureFormProps> = (
         {error && <div className="capture-form__notice capture-form__notice--error">{error}</div>}
         {responseData && (
           <div className="capture-form__response">
-            <strong>Respuesta del backend:</strong>
-            <pre>{JSON.stringify(responseData, null, 2)}</pre>
+            <strong>Conversacion registrada</strong>
+            <p>
+              Agente: {responseData.agent?.name || selectedAgent?.name || 'Nora'}
+              {typeof responseData.score_promedio === 'number'
+                ? ` · Calidad: ${responseData.score_promedio.toFixed(1)} / 5`
+                : ''}
+            </p>
           </div>
         )}
       </form>

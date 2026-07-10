@@ -1,4 +1,4 @@
-import type { AgentMetrics } from '../types';
+﻿import type { AgentMetrics } from '../types';
 
 export const DEFAULT_METRICS: AgentMetrics = {
   conversations: {
@@ -24,10 +24,14 @@ export const DEFAULT_METRICS: AgentMetrics = {
   lastUpdated: new Date(),
 };
 
+type MetricsInput = Partial<Omit<AgentMetrics, 'lastUpdated'>> & {
+  lastUpdated?: string | Date;
+};
+
 /**
  * Merge API response with defaults to avoid undefined errors
  */
-export function mergeMetricsWithDefaults(data: any): AgentMetrics {
+export function mergeMetricsWithDefaults(data?: MetricsInput | null): AgentMetrics {
   if (!data) return DEFAULT_METRICS;
 
   return {
@@ -47,6 +51,9 @@ export function mergeMetricsWithDefaults(data: any): AgentMetrics {
         ...(data?.hallucination?.byTopic || {}),
       },
     },
+    usuariosMetricas: data?.usuariosMetricas,
+    preguntasMetricas: data?.preguntasMetricas,
+    database: data?.database,
     lastUpdated: data?.lastUpdated ? new Date(data.lastUpdated) : new Date(),
   };
 }

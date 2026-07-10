@@ -1,11 +1,10 @@
-# API Documentation - Nora Agents
+﻿# API Documentation - Nora Agents
 
 ## Base URL
 
 **Production (Railway)**
-```
-https://ctm-analyzer-backend-production.up.railway.app
-```
+
+Use the public domain assigned to the Railway service after deployment.
 
 **Local Development**
 ```
@@ -14,7 +13,15 @@ http://localhost:3001
 
 ## Authentication
 
-Currently, no authentication is required. All endpoints are publicly accessible.
+The internal dashboard, metrics, conversations, exports, and agent management require the administrative key configured in `AGENT_ADMIN_KEY`. Public agent responses expose only safe summary fields.
+
+Send the key only in the administrative requests:
+
+```http
+X-Agent-Admin-Key: your-administrative-key
+```
+
+The browser stores this key only for the current tab session. AI endpoints are rate limited and may return `429` when the configured limit is exceeded.
 
 ---
 
@@ -77,6 +84,96 @@ Obtiene métricas actuales del asistente.
 }
 ```
 
+---
+
+### Agents
+
+#### `GET /api/agents`
+Lista los agentes configurados y su version activa.
+
+**Response** (200 OK)
+```json
+{
+  "status": "success",
+  "count": 1,
+  "data": [
+    {
+      "id": "agent_nora",
+      "slug": "nora",
+      "name": "Nora",
+      "description": "Asistente de viajes y turismo de CTM",
+      "status": "published",
+      "default_language": "es",
+      "active_version": {
+        "id": "agent_nora_v1",
+        "version": 1,
+        "system_prompt": "Eres Nora...",
+        "model": "gpt-4o-mini",
+        "temperature": 0.4,
+        "max_tokens": 350
+      }
+    }
+  ]
+}
+```
+
+#### `POST /api/agents/admin/verify`
+Valida la clave administrativa antes de habilitar la edicion visual.
+
+**Required Header**
+```http
+X-Agent-Admin-Key: your-administrative-key
+```
+
+#### `POST /api/agents`
+Crea un agente nuevo. Requiere `X-Agent-Admin-Key`. Si se envia `system_prompt`, `model`, `temperature` o `max_tokens`, se crea tambien su primera version activa.
+
+**Request Body**
+```json
+{
+  "name": "Nora Hoteles",
+  "slug": "nora-hoteles",
+  "description": "Agente para reservas y soporte hotelero",
+  "status": "draft",
+  "default_language": "es",
+  "system_prompt": "Eres un agente experto en hoteles...",
+  "model": "gpt-4o-mini",
+  "temperature": 0.4,
+  "max_tokens": 350
+}
+```
+
+#### `PATCH /api/agents/:id`
+Actualiza un agente existente. Requiere `X-Agent-Admin-Key`. Cuando cambia el prompt o parametros del modelo, el backend guarda una version nueva y la marca como activa.
+
+#### `POST /api/agents/:id/test`
+Prueba un agente sin guardar una conversacion. Requiere `X-Agent-Admin-Key`.
+
+**Request Body**
+```json
+{
+  "pregunta": "Necesito una recomendacion de hotel corporativo en Bogota"
+}
+```
+
+**Response** (200 OK)
+```json
+{
+  "status": "success",
+  "respuesta": "Claro, puedo ayudarte...",
+  "modelo": "gpt-4o-mini",
+  "agent": {
+    "id": "agent_nora",
+    "name": "Nora"
+  },
+  "telemetry": {
+    "provider": "openai",
+    "latency_ms": 820,
+    "tokens_input": 120,
+    "tokens_output": 90
+  }
+}
+```
 ---
 
 ### Conversations
@@ -150,32 +247,36 @@ Obtiene histórico de conversaciones para gráficos.
 ### Chat & Processing
 
 #### `POST /api/chat`
-Genera respuesta usando OpenAI GPT.
+Genera una respuesta usando el agente activo o el agente indicado.
 
 **Request Body**
 ```json
 {
-  "message": "¿Cuál es el mejor momento para visitar las Islas Galápagos?",
-  "context": {
-    "user_id": "user_123",
-    "user_email": "user@example.com",
-    "region": "Ecuador"
-  }
+  "pregunta": "Cual es el mejor momento para visitar las Islas Galapagos?",
+  "agent_id": "agent_nora",
+  "usuario_id": "user_123",
+  "usuario_email": "user@example.com",
+  "region": "Ecuador"
 }
 ```
 
 **Response** (200 OK)
 ```json
 {
-  "id": "response_123",
-  "message": "El mejor momento es de junio a agosto...",
-  "assistant": "NORA",
-  "usage": {
-    "prompt_tokens": 45,
-    "completion_tokens": 120,
-    "total_tokens": 165
+  "status": "success",
+  "respuesta": "El mejor momento es de junio a agosto...",
+  "modelo": "gpt-4o-mini",
+  "agent": {
+    "id": "agent_nora",
+    "name": "Nora",
+    "slug": "nora"
   },
-  "timestamp": "2024-06-02T10:30:00Z"
+  "telemetry": {
+    "provider": "openai",
+    "latency_ms": 820,
+    "tokens_input": 45,
+    "tokens_output": 120
+  }
 }
 ```
 

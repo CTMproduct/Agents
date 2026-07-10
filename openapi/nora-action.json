@@ -2,7 +2,7 @@
   "openapi": "3.1.1",
   "info": {
     "title": "Nora Conversation Capture Action",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "OpenAPI schema for the ChatGPT action that sends conversation captures to the Nora backend."
   },
   "servers": [
@@ -119,8 +119,19 @@
     "schemas": {
       "CaptureConversationPayload": {
         "type": "object",
-        "required": ["asistente_nombre", "pregunta", "respuesta", "region"],
+        "required": [
+          "pregunta",
+          "respuesta"
+        ],
         "properties": {
+          "agent_id": {
+            "type": "string",
+            "example": "agent_nora"
+          },
+          "agent_slug": {
+            "type": "string",
+            "example": "nora"
+          },
           "asistente_nombre": {
             "type": "string",
             "example": "NORA"
@@ -158,8 +169,18 @@
       },
       "ChatCaptureRequestPayload": {
         "type": "object",
-        "required": ["pregunta"],
+        "required": [
+          "pregunta"
+        ],
         "properties": {
+          "agent_id": {
+            "type": "string",
+            "example": "agent_nora"
+          },
+          "agent_slug": {
+            "type": "string",
+            "example": "nora"
+          },
           "pregunta": {
             "type": "string",
             "example": "Necesito ayuda para reservar un hotel en Cartagena"
@@ -209,6 +230,20 @@
           "database": {
             "type": "string",
             "example": "Memory"
+          },
+          "agent": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "slug": {
+                "type": "string"
+              }
+            }
           }
         }
       },
@@ -239,13 +274,37 @@
           "score_promedio": {
             "type": "number",
             "example": 4.7
+          },
+          "agent": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "slug": {
+                "type": "string"
+              }
+            }
           }
         }
       },
       "ChatRequestPayload": {
         "type": "object",
-        "required": ["pregunta"],
+        "required": [
+          "pregunta"
+        ],
         "properties": {
+          "agent_id": {
+            "type": "string",
+            "example": "agent_nora"
+          },
+          "agent_slug": {
+            "type": "string",
+            "example": "nora"
+          },
           "pregunta": {
             "type": "string",
             "example": "Necesito ayuda para reservar un hotel en Cartagena"
@@ -283,36 +342,20 @@
           "modelo": {
             "type": "string",
             "example": "gpt-4o-mini"
-          }
-        }
-      },
-      "CaptureConversationResponse": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string",
-            "example": "success"
           },
-          "mensaje": {
-            "type": "string",
-            "example": "Captura registrada correctamente"
-          },
-          "message": {
-            "type": "string",
-            "example": "Captura registrada correctamente"
-          },
-          "data": {
+          "agent": {
             "type": "object",
             "properties": {
-              "conversationId": {
-                "type": "string",
-                "example": "conv_123456"
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "slug": {
+                "type": "string"
               }
             }
-          },
-          "score_promedio": {
-            "type": "number",
-            "example": 4.7
           }
         }
       }

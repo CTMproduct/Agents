@@ -1,28 +1,22 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useCallback, useState, useEffect } from 'react';
 import { apiService } from '../../services/api';
+import type { ConversationRecord } from '../../types';
 import '../../styles/ConversationsList.css';
 
-interface Conversation {
-  _id?: string;
-  id?: string;
-  asistente_nombre: string;
-  pregunta: string;
-  respuesta: string;
-  usuario_nombre?: string;
-  usuario_email?: string;
-  score_promedio?: number;
-  timestamp?: string;
-  createdAt?: string;
+function formatConversationDate(value?: string) {
+  if (!value) return 'Sin fecha';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 'Sin fecha' : date.toLocaleString('es-CO');
 }
 
 export const ConversationsList: React.FC = () => {
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [conversations, setConversations] = useState<ConversationRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'score'>('recent');
 
-  const fetchConversations = async () => {
+  const fetchConversations = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -40,14 +34,21 @@ export const ConversationsList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchConversations();
-    // Recargar cada 2 minutos
-    const interval = setInterval(fetchConversations, 120000);
-    return () => clearInterval(interval);
-  }, []);
+    const timerId = window.setTimeout(() => {
+      void fetchConversations();
+    }, 0);
+    const interval = window.setInterval(() => {
+      void fetchConversations();
+    }, 120000);
+
+    return () => {
+      window.clearTimeout(timerId);
+      window.clearInterval(interval);
+    };
+  }, [fetchConversations]);
 
   const handleExport = async (format: 'csv' | 'json') => {
     try {
@@ -63,7 +64,7 @@ export const ConversationsList: React.FC = () => {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      window.setTimeout(() => window.URL.revokeObjectURL(url), 0);
     } catch (err) {
       setError('Error al descargar archivo');
       console.error('Export error:', err);
@@ -85,8 +86,8 @@ export const ConversationsList: React.FC = () => {
     })
     .sort((a, b) => {
       if (sortBy === 'recent') {
-        const timeA = new Date(a.timestamp || a.createdAt || 0).getTime();
-        const timeB = new Date(b.timestamp || b.createdAt || 0).getTime();
+        const timeA = new Date(a.timestamp || a.created_at || a.createdAt || 0).getTime();
+        const timeB = new Date(b.timestamp || b.created_at || b.createdAt || 0).getTime();
         return timeB - timeA;
       } else {
         return (b.score_promedio || 0) - (a.score_promedio || 0);
@@ -96,11 +97,11 @@ export const ConversationsList: React.FC = () => {
   return (
     <div className="conversations-list">
       <div className="conversations-list__header">
-        <h2>💬 Conversaciones Capturadas</h2>
+        <h2>Conversaciones</h2>
         <div className="conversations-list__controls">
           <input
             type="text"
-            placeholder="🔍 Buscar..."
+            placeholder="Buscar por pregunta, respuesta o usuario"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             className="conversations-list__search"
@@ -120,7 +121,7 @@ export const ConversationsList: React.FC = () => {
             className="conversations-list__button conversations-list__button--refresh"
             disabled={loading}
           >
-            🔄 Actualizar
+            Actualizar
           </button>
 
           <button
@@ -128,7 +129,7 @@ export const ConversationsList: React.FC = () => {
             className="conversations-list__button conversations-list__button--export"
             title="Descargar como CSV para Excel"
           >
-            📊 CSV
+            Descargar CSV
           </button>
 
           <button
@@ -136,27 +137,27 @@ export const ConversationsList: React.FC = () => {
             className="conversations-list__button conversations-list__button--export"
             title="Descargar como JSON"
           >
-            📋 JSON
+            Descargar JSON
           </button>
         </div>
       </div>
 
       {error && (
         <div className="conversations-list__error">
-          <p>⚠️ {error}</p>
+          <p>{error}</p>
           <button onClick={() => fetchConversations()}>Reintentar</button>
         </div>
       )}
 
       {loading && (
         <div className="conversations-list__loading">
-          <p>⏳ Cargando conversaciones...</p>
+          <p>Cargando conversaciones...</p>
         </div>
       )}
 
       {!loading && filteredConversations.length === 0 && (
         <div className="conversations-list__empty">
-          <p>😴 No hay conversaciones</p>
+          <p>No hay conversaciones</p>
           <small>Las conversaciones capturadas aparecerán aquí</small>
         </div>
       )}
@@ -164,7 +165,7 @@ export const ConversationsList: React.FC = () => {
       {!loading && filteredConversations.length > 0 && (
         <div className="conversations-list__container">
           <p className="conversations-list__count">
-            📌 Mostrando {filteredConversations.length} de {conversations.length} conversaciones
+            Mostrando {filteredConversations.length} de {conversations.length} conversaciones
           </p>
 
           <div className="conversations-list__table-wrapper">
@@ -182,9 +183,9 @@ export const ConversationsList: React.FC = () => {
               </thead>
               <tbody>
                 {filteredConversations.map((conv, idx) => (
-                  <tr key={idx} className="conversations-list__row">
+                  <tr key={conv.id || conv._id || `${conv.timestamp || 'conversation'}-${idx}`} className="conversations-list__row">
                     <td className="conversations-list__date">
-                      {new Date(conv.timestamp || conv.createdAt || 0).toLocaleString('es-ES')}
+                      {formatConversationDate(conv.timestamp || conv.created_at || conv.createdAt)}
                     </td>
                     <td className="conversations-list__user">
                       <div className="conversations-list__user-name">{conv.usuario_nombre || 'Anónimo'}</div>
@@ -224,7 +225,7 @@ export const ConversationsList: React.FC = () => {
                         (conv.score_promedio || 0) >= 3 ? 'medium' :
                         'low'
                       }`}>
-                        ⭐ {(conv.score_promedio || 0).toFixed(1)}
+                        {(conv.score_promedio || 0).toFixed(1)}
                       </div>
                     </td>
                   </tr>

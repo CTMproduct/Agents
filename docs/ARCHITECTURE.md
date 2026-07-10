@@ -1,340 +1,98 @@
-# Arquitectura del Proyecto Nora Agents
+# Arquitectura de Nora Control
 
-## Descripción General
+## Resumen
 
-Nora Agents es una aplicación monolítica que combina un **backend Express.js** con un **frontend React/Vite**. La arquitectura está organizada para ser **mantenible, escalable y fácil de entender**.
+Nora Control es una aplicacion monolitica desplegable como un solo servicio.
 
-## Estructura del Proyecto
-
-```
-Agents/
-├── backend/
-│   ├── src/
-│   │   ├── config/         # Configuraciones centralizadas
-│   │   ├── routes/         # Definición de rutas
-│   │   ├── controllers/    # Lógica de request/response
-│   │   ├── services/       # Lógica de negocio
-│   │   ├── models/         # Schemas de Mongoose
-│   │   ├── database/       # Operaciones con BD
-│   │   ├── middleware/     # Middleware de Express
-│   │   ├── utils/          # Helpers y validators
-│   │   └── index.js        # Punto de entrada
-│   └── package.json
-│
-├── frontend/
-│   ├── src/
-│   │   ├── components/     # Componentes React
-│   │   ├── hooks/          # Custom hooks
-│   │   ├── services/       # Cliente API (Axios)
-│   │   ├── types/          # TypeScript types
-│   │   ├── constants/      # Constantes de la aplicación
-│   │   ├── utils/          # Helpers, formatters
-│   │   ├── styles/         # Estilos globales
-│   │   ├── App.tsx         # Componente raíz
-│   │   └── main.tsx        # Punto de entrada
-│   └── package.json
-│
-├── docs/                   # Documentación
-├── .env.example
-├── package.json            # Root monorepo
-├── railway.json           # Configuración Railway
-└── README.md
+```text
+Navegador
+   |
+   | HTTPS
+   v
+Express
+   |-- archivos compilados de React
+   |-- API /api/*
+   |-- control de acceso administrativo
+   |-- limites para solicitudes de IA
+   |
+   +--> OpenAI
+   |
+   +--> PostgreSQL
+        |-- conversations
+        |-- agents
+        +-- agent_versions
 ```
 
-## Backend (Express.js)
+## Frontend
 
-### Entrada Principal
-- **Archivo**: `backend/src/index.js`
-- **Puerto**: 3001
-- **Responsabilidad**: Inicializar Express, conectar BD, exponer APIs y servir frontend estático
+El frontend usa React, TypeScript y Vite.
 
-### Estructura de Carpetas
+- `App.tsx` controla el acceso de la plataforma y la navegacion.
+- `Dashboard` presenta metricas, conversaciones y captura.
+- `AgentStudio` permite crear, ajustar y probar agentes.
+- Las vistas se cargan bajo demanda para reducir el tiempo inicial.
+- La clave administrativa se guarda solo en `sessionStorage`.
 
-#### `config/`
-Configuraciones centralizadas:
-- Database URLs
-- OpenAI API keys
-- Constantes de aplicación
+## Backend
 
-#### `database/`
-Conexiones y operaciones con bases de datos:
-- `postgres.js` - Pool de PostgreSQL, CRUD operations
-- `mongodb.js` - Conexión a MongoDB con Mongoose
+El backend usa Express y concentra actualmente las rutas en `backend/src/index.js`.
 
-#### `models/`
-Schemas de Mongoose:
-- Conversation - Conversaciones capturadas
-- Metrics - Métricas históricas
-- ConversationHistory, PerformanceHistory, HallucinationHistory
+Responsabilidades:
 
-#### `services/`
-Lógica de negocio:
-- `openaiService.js` - Llamadas a OpenAI GPT
-- `conversationService.js` - Procesamiento de conversaciones
-- `metricsService.js` - Cálculo de métricas
-- `storageService.js` - Fallback a almacenamiento en archivos
+- Servir el frontend compilado.
+- Validar la clave administrativa.
+- Resolver el agente y su version activa.
+- Generar respuestas y evaluaciones con OpenAI.
+- Capturar conversaciones y telemetria.
+- Exponer metricas e historiales.
+- Exportar datos en CSV y JSON.
 
-#### `controllers/`
-Lógica de request/response:
-- `metricsController.js`
-- `chatController.js`
-- `conversationController.js`
-- `healthController.js`
+Esta estructura es apropiada para el tamano actual. Si el backend sigue creciendo, la siguiente division recomendada es: rutas, servicios de agentes, servicio de conversaciones, servicio de OpenAI y middleware de seguridad.
 
-#### `routes/`
-Definición de rutas Express:
-- `api.js` - Rutas /api/*
-- `health.js` - Ruta /health
-- `spa.js` - Fallback SPA
+## Agentes y versiones
 
-#### `middleware/`
-Middleware de Express:
-- CORS configuration
-- Error handling
-- Request logging
+`agents` contiene la identidad y el estado operativo.
 
-#### `utils/`
-Funciones auxiliares:
-- Validators
-- Helpers
-- Logging
+`agent_versions` contiene:
 
-### Flow de Request
+- instrucciones del sistema;
+- modelo;
+- creatividad;
+- longitud maxima;
+- herramientas;
+- reglas de seguridad.
 
-```
-Request HTTP
-    ↓
-CORS Middleware
-    ↓
-Logger Middleware
-    ↓
-Route Handler
-    ↓
-Controller (request validation)
-    ↓
-Service (business logic)
-    ↓
-Database / External API
-    ↓
-Response
-```
+Una nueva version se crea solo cuando cambia la configuracion. La escritura del agente y su version se ejecuta dentro de una transaccion de PostgreSQL.
 
-## Frontend (React + Vite)
+Las respuestas publicas nunca incluyen las instrucciones internas del agente.
 
-### Entrada Principal
-- **Archivo**: `frontend/src/main.tsx`
-- **Punto de monta**: `div#root` en `index.html`
+## Datos
 
-### Estructura de Carpetas
+`conversations` conserva pregunta, respuesta, usuario, clasificacion, agente, version y telemetria.
 
-#### `components/`
-Componentes React organizados por función:
-- `common/` - Componentes reutilizables (Header, StatusBar, MetricCard)
-- `dashboard/` - Componentes específicos del dashboard
-- `charts/` - Componentes de gráficos
-- `status/` - Componentes de estado
-
-#### `hooks/`
-Custom React hooks:
-- `useMetrics` - Obtiene métricas del backend
-- `useBackendHealth` - Verifica salud del backend
-- `useChartData` - Datos para gráficos
-- `useApi` - Hook genérico para llamadas API
-
-#### `services/`
-Cliente API:
-- `api.ts` - Cliente Axios centralizado
-- Todos los métodos para comunicarse con el backend
-
-#### `types/`
-TypeScript types:
-- Interfaces de respuestas API
-- Modelos de dominio
-
-#### `constants/`
-Constantes de aplicación:
-- URLs de API
-- Strings de UI
-- Configuración del frontend
-
-#### `utils/`
-Funciones auxiliares:
-- Formatters (fechas, números)
-- Validators (inputs)
-- Helpers (transformaciones de datos)
-
-### Build Output
-- **Carpeta**: `frontend/dist`
-- **Contenido**: HTML + CSS + JS compilado por Vite
-- **Servida por**: Backend Express (express.static)
-
-## Monorepo Root
-
-### Scripts Principales
-```json
-{
-  "install:all": "instala dependencias en backend y frontend",
-  "build:all": "compila backend e instala, luego compila frontend",
-  "start": "inicia el backend en puerto 3001",
-  "dev:backend": "inicia backend con nodemon",
-  "dev:frontend": "inicia frontend con Vite dev server"
-}
-```
-
-### Railway Configuration
-- **Archivo**: `railway.json`
-- **Build Command**: `npm run build:all`
-- **Start Command**: `npm run start`
-- **Health Check**: `/health`
-- **Puerto**: Automático (Railway asigna)
-
-## Flujo de Datos
-
-### Consulta de Métricas
-```
-Frontend (Dashboard.tsx)
-    ↓ (fetch /api/metrics)
-Backend Controller (metricsController)
-    ↓
-Service (metricsService)
-    ↓
-Database (MongoDB/PostgreSQL)
-    ↓
-Response JSON con métricas
-    ↓
-Frontend (actualiza estado con setMetrics)
-```
-
-### Captura de Conversación
-```
-Frontend (ConversationCaptureForm.tsx)
-    ↓ (POST /api/capturar-conversacion)
-Backend Controller (conversationController)
-    ↓
-Service (conversationService + openaiService)
-    ↓
-OpenAI GPT → Evaluación
-    ↓
-Database (guarda evaluación)
-    ↓
-Response con análisis
-    ↓
-Frontend (actualiza lista de conversaciones)
-```
-
-## Bases de Datos
-
-### PostgreSQL
-- **Propósito**: Producción, datos persistentes
-- **Tabla**: `conversations` - todas las conversaciones capturadas
-- **Configuración**: Via `POSTGRES_URL`
-
-### MongoDB
-- **Propósito**: Historial y métricas
-- **Colecciones**: 
-  - Conversation
-  - Metrics
-  - ConversationHistory
-  - PerformanceHistory
-  - HallucinationHistory
-- **Configuración**: Via `MONGODB_URI`
-
-### Fallback Storage
-- **Propósito**: Cuando no hay BD disponible
-- **Ubicación**: `backend/src/data/fallback-conversations.json`
-- **Formato**: JSON plano
-
-## Autenticación y Autorización
-
-Actualmente el proyecto **no tiene autenticación**. Todos los endpoints son públicos.
-
-Para agregar autenticación en el futuro:
-1. Crear `backend/src/middleware/auth.js`
-2. Agregar validación de tokens JWT
-3. Actualizar controllers para verificar permisos
-
-## Variables de Entorno
-
-### Backend (`.env`)
-```
-OPENAI_API_KEY=          # API key de OpenAI
-OPENAI_MODEL=gpt-4o-mini # Modelo a usar
-PORT=3001               # Puerto del servidor
-FRONTEND_URL=http://...  # URL del frontend
-POSTGRES_URL=            # Conexión PostgreSQL
-MONGODB_URI=             # Conexión MongoDB
-NODE_ENV=production      # Entorno
-```
-
-### Frontend (`.env`)
-```
-VITE_API_BASE_URL=https://...  # URL del backend
-VITE_ASSISTANT_NAME=NORA       # Nombre del asistente
-VITE_DEBUG_MODE=false          # Debug logging
-```
-
-## Deployment
-
-### En Railway
-1. Root `package.json` ejecuta `npm run build:all`
-2. Crea `frontend/dist`
-3. Inicia backend con `npm run start`
-4. Backend sirve frontend compilado desde `/`
-5. APIs están disponibles en `/api/*`
-
-### Verificación Post-Deploy
-- ✅ GET `/health` retorna 200
-- ✅ GET `/` retorna HTML del dashboard
-- ✅ GET `/api/metrics` retorna métricas
-- ✅ POST `/api/capturar-conversacion` funciona
-- ✅ POST `/api/chat` funciona
-
-## Testing
-
-No hay tests automatizados actualmente. Próximas mejoras podrían incluir:
-- Tests unitarios en services/ (Jest)
-- Tests de integración API (Supertest)
-- Tests en componentes React (Vitest + React Testing Library)
-
-## Performance
-
-### Optimizaciones Actuales
-- Express.static sirve assets compilados con caché
-- Axios en frontend con timeout configurado
-- Índices en MongoDB en campos importantes
-- Connection pooling en PostgreSQL
-
-### Mejoras Futuras
-- Implementar caching (Redis)
-- Compresión de responses (gzip)
-- Lazy loading en frontend
-- Paginación en endpoints de consulta
+En produccion se usa `DATABASE_URL`. Sin PostgreSQL, el sistema usa un archivo JSON de respaldo pensado para desarrollo.
 
 ## Seguridad
 
-### Configuración Actual
-- CORS habilitado para desarrollo
-- NODE_ENV sensible en producción
-- Variables de entorno para secrets
-- SSL en PostgreSQL en producción
+- La aplicacion interna requiere `AGENT_ADMIN_KEY`.
+- La comparacion de la clave usa tiempo constante.
+- Conversaciones, metricas, historiales y exportaciones estan protegidos.
+- Las instrucciones internas no se incluyen en respuestas publicas.
+- Las rutas de IA tienen limite configurable por IP.
+- El cuerpo JSON tiene un limite de tamano.
+- Se eliminan detalles internos de los errores enviados al cliente.
+- Se agregan cabeceras contra MIME sniffing, framing y permisos del navegador.
 
-### Recomendaciones
-- Agregar rate limiting
-- Validar y sanitizar inputs
-- Implementar autenticación
-- Usar HTTPS en todas partes
-- Auditoría de logs
+## Despliegue
 
-## Mantenimiento
+Railway ejecuta una construccion reproducible con `npm ci`, compila React y luego inicia Express. `GET /health` es el chequeo de salud.
 
-### Checklist Regular
-- ✅ Verificar logs en Railway
-- ✅ Monitorear uso de BD
-- ✅ Actualizar dependencias npm
-- ✅ Revisar health checks
-- ✅ Validar métricas de error
+Render queda disponible como destino alternativo mediante `render.yaml`.
 
----
+## Limites actuales y siguientes pasos
 
-**Última actualización**: Junio 2024
-**Versión**: 1.0.0
+- El limite de solicitudes vive en memoria; para varias replicas debe migrarse a Redis.
+- La clave compartida es adecuada para un equipo pequeno; el siguiente paso empresarial es inicio de sesion individual con roles y auditoria.
+- Las herramientas y reglas se almacenan, pero requieren un ejecutor y una interfaz visual en una fase posterior.
+- El costo se registra en la estructura de datos, pero falta calcularlo con una tabla de precios versionada.
+- Se recomienda separar las migraciones SQL del arranque cuando el volumen y el equipo crezcan.

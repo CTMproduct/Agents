@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { apiService } from '../services/api';
 
 interface UseBackendHealthReturn {
@@ -37,9 +37,17 @@ export const useBackendHealth = (): UseBackendHealthReturn => {
 
   // Check health on mount and then every 30 seconds
   useEffect(() => {
-    checkHealth();
-    const intervalId = setInterval(checkHealth, 30000);
-    return () => clearInterval(intervalId);
+    const timerId = window.setTimeout(() => {
+      void checkHealth();
+    }, 0);
+    const intervalId = window.setInterval(() => {
+      void checkHealth();
+    }, 30000);
+
+    return () => {
+      window.clearTimeout(timerId);
+      window.clearInterval(intervalId);
+    };
   }, [checkHealth]);
 
   return {

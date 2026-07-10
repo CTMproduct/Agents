@@ -1,226 +1,100 @@
-# 🤖 Nora Agents - AI Assistant Analytics Dashboard
+# Nora Control
 
-A modern, scalable monolithic application that combines an **Express.js backend** with a **React + Vite frontend** to capture, evaluate, and analyze conversations with the Nora AI assistant.
+Plataforma de CTM para crear, ajustar, probar y supervisar agentes de inteligencia artificial desde una interfaz visual.
 
-## ✨ Features
+## Funcionalidades
 
-- **Real-time Dashboard**: Visualize assistant performance with interactive charts
-- **Conversation Capture**: Automatically capture and evaluate conversations using OpenAI GPT
-- **Metrics Tracking**: Monitor precision, clarity, relevance, completeness, and utility scores
-- **Performance Analytics**: Track uptime, latency, error rates, and more
-- **Data Export**: Export conversations in CSV or JSON format
-- **Multi-Database Support**: PostgreSQL, MongoDB, or fallback JSON storage
-- **Production-Ready**: Deployed on Railway with automatic health checks
+- Estudio visual de agentes con nombre, estado, prompt, modelo, temperatura y limite de respuesta.
+- Versionado automatico cuando cambia la configuracion del agente.
+- Prueba rapida de cada agente antes de publicarlo.
+- Dashboard de conversaciones, calidad, rendimiento y alucinaciones.
+- Captura y exportacion de conversaciones en CSV o JSON.
+- Persistencia en PostgreSQL con almacenamiento local de respaldo.
+- Proteccion administrativa para crear, editar y probar agentes.
+- Limites de solicitudes y cabeceras de seguridad para produccion.
+- Despliegue monolitico: el backend sirve tambien el frontend compilado.
 
-## 📋 Documentation
+## Requisitos
 
-Complete documentation is available in the `docs/` folder:
+- Node.js 22
+- npm 10 o superior
+- PostgreSQL recomendado para produccion
+- Una clave de OpenAI
 
-- **[ARCHITECTURE.md](./docs/ARCHITECTURE.md)** - System design and patterns
-- **[API.md](./docs/API.md)** - Complete API reference  
-- **[SETUP.md](./docs/SETUP.md)** - Installation and configuration
-- **[DEPLOYMENT.md](./docs/DEPLOYMENT.md)** - Deployment guide
+## Instalacion local
 
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Node.js 22.x
-- npm 10.x+
-- Git
-
-### Installation
-
-```bash
-# Clone repository
-git clone <repository-url>
-cd Agents
-
-# Install all dependencies
+```powershell
 npm run install:all
-
-# Create environment files
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
+Copy-Item backend/.env.example backend/.env
+Copy-Item frontend/.env.example frontend/.env
 ```
 
-### Development
+Configura como minimo en `backend/.env`:
 
-**Terminal 1: Start Backend**
-```bash
-npm run dev:backend
-# Backend will run on http://localhost:3001
-```
-
-**Terminal 2: Start Frontend** 
-```bash
-npm run dev:frontend
-# Frontend will run on http://localhost:5173
-```
-
-Access the dashboard: http://localhost:5173
-
-### Production Build
-
-```bash
-# Build for production
-npm run build:all
-
-# Start backend (serves compiled frontend)
-npm run start
-
-# Access at http://localhost:3001
-```
-
-## 📁 Project Structure
-
-```
-Agents/
-├── backend/
-│   ├── src/
-│   │   ├── config/         # Configuration
-│   │   ├── controllers/    # Request handlers
-│   │   ├── database/       # DB connections
-│   │   ├── middleware/     # Middleware
-│   │   ├── models/         # Data schemas
-│   │   ├── routes/         # API routes
-│   │   ├── services/       # Business logic
-│   │   ├── utils/          # Helpers
-│   │   └── index.js        # Entry point
-│   └── package.json
-│
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── common/     # Reusable components
-│   │   │   ├── dashboard/  # Dashboard components
-│   │   │   ├── charts/     # Chart components
-│   │   │   └── status/     # Status components
-│   │   ├── hooks/          # Custom hooks
-│   │   ├── services/       # API client
-│   │   ├── types/          # TypeScript types
-│   │   ├── constants/      # App constants
-│   │   ├── utils/          # Helpers
-│   │   ├── styles/         # CSS files
-│   │   ├── App.tsx         # Root component
-│   │   └── main.tsx        # Entry point
-│   └── package.json
-│
-├── docs/                   # Documentation
-│   ├── ARCHITECTURE.md
-│   ├── API.md
-│   ├── SETUP.md
-│   └── DEPLOYMENT.md
-│
-├── package.json           # Root config
-├── railway.json          # Railway config
-└── README.md             # This file
-```
-
-## 🛠️ Technology Stack
-
-- **Backend**: Node.js, Express.js, PostgreSQL, MongoDB
-- **Frontend**: React 19, TypeScript, Vite, Recharts
-- **API**: OpenAI GPT-4o-mini
-- **Hosting**: Railway
-- **Version Control**: Git/GitHub
-
-## ⚙️ Configuration
-
-See [SETUP.md](./docs/SETUP.md) for detailed configuration instructions.
-
-Quick setup:
-
-**Backend** (`backend/.env`):
 ```env
-OPENAI_API_KEY=your-key-here
-OPENAI_MODEL=gpt-4o-mini
+OPENAI_API_KEY=your-openai-key
+AGENT_ADMIN_KEY=your-long-random-admin-key
+DATABASE_URL=postgresql://user:password@host:5432/database
 PORT=3001
 NODE_ENV=development
 FRONTEND_URL=http://localhost:5173
 ```
 
-**Frontend** (`frontend/.env`):
+Inicia el backend y el frontend en terminales separadas:
+
+```powershell
+npm run dev:backend
+npm run dev:frontend
+```
+
+Abre `http://localhost:5173`.
+
+## Validacion
+
+```powershell
+npm run check
+```
+
+La validacion comprueba sintaxis del backend, reglas del frontend, tipos de TypeScript y compilacion de produccion.
+
+## Produccion
+
+Railway usa `railway.json` para instalar dependencias, compilar el frontend, iniciar el backend y verificar `/health`.
+
+Variables requeridas:
+
 ```env
-VITE_API_BASE_URL=http://localhost:3001
-VITE_ASSISTANT_NAME=NORA
-VITE_DEBUG_MODE=false
+OPENAI_API_KEY=...
+AGENT_ADMIN_KEY=...
+DATABASE_URL=...
+NODE_ENV=production
+FRONTEND_URL=https://your-service.up.railway.app
+ALLOWED_ORIGINS=https://your-service.up.railway.app
 ```
 
-## 📊 API Endpoints
+El valor de `AGENT_ADMIN_KEY` nunca debe guardarse en Git. Debe configurarse como secreto en la plataforma de despliegue.
 
-See [API.md](./docs/API.md) for complete documentation.
+Consulta [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) para el proceso completo y [docs/API.md](./docs/API.md) para los endpoints.
 
-Key endpoints:
-- `GET /health` - Health check
-- `GET /api/metrics` - Get metrics
-- `POST /api/capturar-conversacion` - Capture conversation
-- `GET /api/conversations` - List conversations
-- `GET /api/export/conversations` - Export data
+## Estructura
 
-## 🚢 Deployment
-
-Deploy to Railway (recommended):
-
-1. Push code to GitHub
-2. Connect to Railway
-3. Set environment variables
-4. Railway automatically deploys
-
-See [DEPLOYMENT.md](./docs/DEPLOYMENT.md) for detailed instructions.
-
-**Production URL**: https://ctm-analyzer-backend-production.up.railway.app
-
-## 💻 Available Scripts
-
-```bash
-npm run install:all      # Install dependencies
-npm run build:all        # Build entire project
-npm run start            # Start backend
-npm run dev:backend      # Backend with hot reload
-npm run dev:frontend     # Frontend with hot reload
+```text
+backend/                 API Express y PostgreSQL
+frontend/                React, TypeScript y Vite
+frontend/src/components/agents/
+                         Estudio visual de agentes
+docs/                    Arquitectura, API y despliegue
+openapi/                 Esquema para integraciones
+railway.json             Despliegue principal
+render.yaml              Despliegue alternativo
 ```
 
-## 🔍 Architecture Highlights
+## Seguridad
 
-- **Separation of Concerns**: Clear separation between models, services, controllers
-- **Component Organization**: Components organized by functionality
-- **Type Safety**: Full TypeScript in frontend
-- **Error Handling**: Comprehensive error handling
-- **Scalable Design**: Ready for multi-database support and caching
+- El acceso al dashboard y a los datos internos requiere la clave administrativa.
+- Crear, modificar y probar agentes requiere `X-Agent-Admin-Key`.
+- La clave administrativa se conserva en `sessionStorage`, no de forma permanente.
+- Las rutas que consumen IA tienen limite configurable por IP.
+- En produccion, si falta `AGENT_ADMIN_KEY`, la edicion queda bloqueada.
 
-## 🐛 Troubleshooting
-
-**API Connection Error**
-- Check `VITE_API_BASE_URL` in frontend `.env`
-- Verify backend running: `curl http://localhost:3001/health`
-
-**Build Issues**
-- Clear cache: `npm cache clean --force`
-- Reinstall: `rm -rf node_modules && npm install`
-
-See [SETUP.md](./docs/SETUP.md) for more troubleshooting.
-
-## 🎯 Next Steps
-
-1. Read [SETUP.md](./docs/SETUP.md) - Installation guide
-2. Review [ARCHITECTURE.md](./docs/ARCHITECTURE.md) - System design
-3. Check [API.md](./docs/API.md) - API reference
-4. Deploy with [DEPLOYMENT.md](./docs/DEPLOYMENT.md)
-
-## 📝 License
-
-Proprietary - CTM Engineering
-
-## 📞 Contact
-
-**Project Maintainer**: CTM Engineering Team  
-**Email**: gerencia@ctmenlinea.com.co
-
----
-
-**Last Updated**: June 2, 2024  
-**Version**: 1.0.0  
-**Status**: ✅ Production Ready
-
-**Ready to use!** 🚀
+Proyecto propietario de CTM Engineering.

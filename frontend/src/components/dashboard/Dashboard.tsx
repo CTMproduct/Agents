@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { MetricCard } from '../common/MetricCard';
 import { Chart } from '../charts/Chart';
 import { BarChartComponent } from '../charts/BarChartComponent';
@@ -73,7 +73,7 @@ export const Dashboard: React.FC = () => {
                 trend={metrics?.conversations.trend}
                 icon="📈"
                 status={
-                  metrics?.conversations.today! > 50
+                  (metrics?.conversations.today || 0) > 50
                     ? 'good'
                     : 'warning'
                 }
@@ -92,7 +92,7 @@ export const Dashboard: React.FC = () => {
                 unit=" / 5"
                 icon="⭐"
                 status={
-                  metrics?.conversations.averageSatisfaction! >= 4
+                  (metrics?.conversations.averageSatisfaction || 0) >= 4
                     ? 'good'
                     : 'warning'
                 }
@@ -132,9 +132,9 @@ export const Dashboard: React.FC = () => {
                 unit="%"
                 icon="✅"
                 status={
-                  metrics?.performance.uptime! >= 99
+                  (metrics?.performance.uptime || 0) >= 99
                     ? 'good'
-                    : metrics?.performance.uptime! >= 95
+                    : (metrics?.performance.uptime || 0) >= 95
                       ? 'warning'
                       : 'critical'
                 }
@@ -145,9 +145,9 @@ export const Dashboard: React.FC = () => {
                 unit=" ms"
                 icon="⚡"
                 status={
-                  metrics?.performance.averageLatency! < 300
+                  (metrics?.performance.averageLatency || 0) < 300
                     ? 'good'
-                    : metrics?.performance.averageLatency! < 500
+                    : (metrics?.performance.averageLatency || 0) < 500
                       ? 'warning'
                       : 'critical'
                 }
@@ -158,9 +158,9 @@ export const Dashboard: React.FC = () => {
                 unit="%"
                 icon="❌"
                 status={
-                  metrics?.performance.errorRate! < 1
+                  (metrics?.performance.errorRate || 0) < 1
                     ? 'good'
-                    : metrics?.performance.errorRate! < 3
+                    : (metrics?.performance.errorRate || 0) < 3
                       ? 'warning'
                       : 'critical'
                 }
@@ -214,9 +214,9 @@ export const Dashboard: React.FC = () => {
                 unit="%"
                 icon="🚨"
                 status={
-                  metrics?.hallucination.rate! < 1
+                  (metrics?.hallucination.rate || 0) < 1
                     ? 'good'
-                    : metrics?.hallucination.rate! < 3
+                    : (metrics?.hallucination.rate || 0) < 3
                       ? 'warning'
                       : 'critical'
                 }
@@ -232,7 +232,7 @@ export const Dashboard: React.FC = () => {
                 unit="%"
                 icon="✓"
                 status={
-                  metrics?.hallucination.factualAccuracy! >= 95
+                  (metrics?.hallucination.factualAccuracy || 0) >= 95
                     ? 'good'
                     : 'warning'
                 }

@@ -1,4 +1,4 @@
-.capture-form {
+﻿.capture-form {
   background: white;
   border-radius: 16px;
   padding: 1.75rem;
@@ -25,16 +25,6 @@
   font-size: 0.95rem;
 }
 
-.capture-form__tag {
-  background: #f0f5ff;
-  color: #2d5de5;
-  border-radius: 999px;
-  padding: 0.45rem 0.9rem;
-  font-size: 0.85rem;
-  font-weight: 700;
-  align-self: center;
-}
-
 .capture-form__form {
   display: flex;
   flex-direction: column;
@@ -56,6 +46,11 @@
 }
 
 .capture-form__field input,
+.capture-form__field select,
+.capture-form__field--wide {
+  grid-column: 1 / -1;
+}
+
 .capture-form__field textarea {
   width: 100%;
   font: inherit;
@@ -64,6 +59,10 @@
   border-radius: 12px;
   background: #fafbff;
   resize: vertical;
+}
+
+.capture-form__field--wide {
+  grid-column: 1 / -1;
 }
 
 .capture-form__field textarea {
@@ -115,17 +114,16 @@
 .capture-form__response {
   padding: 1rem;
   background: #f7f8ff;
-  border-radius: 12px;
+  border-radius: 8px;
   border: 1px solid #e5e8f8;
   color: #2b3b5c;
   font-size: 0.9rem;
   overflow-x: auto;
 }
 
-.capture-form__response pre {
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-word;
+.capture-form__response p {
+  margin: 0.4rem 0 0;
+  line-height: 1.5;
 }
 
 @media (max-width: 900px) {

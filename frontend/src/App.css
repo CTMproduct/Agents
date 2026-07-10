@@ -1,6 +1,212 @@
-.app {
+﻿.app {
   width: 100%;
   min-height: 100vh;
-  background-color: #f5f7fa;
+  background: #f5f7fa;
+  color: #24313f;
 }
 
+.app-nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem clamp(1rem, 3vw, 2rem);
+  background: rgba(255, 255, 255, 0.96);
+  border-bottom: 1px solid #dde4ec;
+  backdrop-filter: blur(10px);
+}
+
+.app-nav__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.app-nav__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: 8px;
+  background: #183a5a;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.app-nav__brand strong,
+.app-nav__brand small {
+  display: block;
+  line-height: 1.1;
+}
+
+.app-nav__brand small {
+  margin-top: 0.18rem;
+  color: #687586;
+  font-size: 0.78rem;
+}
+
+.app-nav__tabs {
+  display: inline-flex;
+  gap: 0.35rem;
+  padding: 0.25rem;
+  border: 1px solid #d7e0ea;
+  border-radius: 8px;
+  background: #eef3f8;
+}
+
+.app-nav__tab {
+  border: 0;
+  border-radius: 6px;
+  padding: 0.55rem 0.85rem;
+  background: transparent;
+  color: #4b5a6b;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.app-nav__tab--active {
+  background: #ffffff;
+  color: #183a5a;
+  box-shadow: 0 1px 3px rgba(24, 58, 90, 0.12);
+}
+
+.app-loading {
+  display: grid;
+  min-height: 45vh;
+  place-items: center;
+  color: #657386;
+  font-weight: 700;
+}
+
+.app-auth {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 1rem;
+  background: #eef2f5;
+}
+
+.app-auth__panel {
+  width: min(420px, 100%);
+  border: 1px solid #d5dde6;
+  border-left: 4px solid #b17a17;
+  border-radius: 8px;
+  padding: 1.25rem;
+  background: #ffffff;
+  box-shadow: 0 12px 32px rgba(22, 37, 53, 0.1);
+}
+
+.app-auth__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.app-auth__brand h1,
+.app-auth__brand p {
+  margin: 0;
+}
+
+.app-auth__brand h1 {
+  color: #162535;
+  font-size: 1.35rem;
+}
+
+.app-auth__brand p {
+  margin-top: 0.2rem;
+  color: #687586;
+  font-size: 0.88rem;
+}
+
+.app-auth__form {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 1.2rem;
+}
+
+.app-auth__form label {
+  display: grid;
+  gap: 0.4rem;
+  color: #3d4c5e;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.app-auth__form input {
+  width: 100%;
+  border: 1px solid #c8d2de;
+  border-radius: 8px;
+  background: #fbfcfe;
+  color: #1f2b38;
+  font: inherit;
+  padding: 0.75rem 0.8rem;
+}
+
+.app-auth__form button {
+  border: 0;
+  border-radius: 8px;
+  padding: 0.75rem 0.9rem;
+  background: #183a5a;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.app-auth__form button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.app-auth__error {
+  margin: 0.8rem 0 0;
+  border-radius: 8px;
+  padding: 0.7rem 0.8rem;
+  background: #ffe8e5;
+  color: #a63f31;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.app-nav__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.app-nav__logout {
+  border: 1px solid #ccd6e1;
+  border-radius: 8px;
+  padding: 0.55rem 0.75rem;
+  background: #ffffff;
+  color: #4b5a6b;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .app-nav {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .app-nav__actions {
+    width: 100%;
+  }
+
+  .app-nav__tabs {
+    flex: 1;
+    width: 100%;
+  }
+
+  .app-nav__tab {
+    flex: 1;
+  }
+}

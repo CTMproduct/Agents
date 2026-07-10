@@ -1,10 +1,10 @@
-import type { FC } from 'react';
+﻿import type { FC } from 'react';
 import { PieChart, Pie, Cell, Legend, ResponsiveContainer, Tooltip } from 'recharts';
 import '../../styles/Chart.css';
 
 interface PieChartComponentProps {
   title: string;
-  data: any[];
+  data: Array<Record<string, unknown>>;
   dataKey: string;
   nameKey: string;
   colors?: string[];

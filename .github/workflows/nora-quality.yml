@@ -1,0 +1,38 @@
+name: Nora quality checks
+
+on:
+  push:
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "openapi/**"
+      - "railway.json"
+      - "render.yaml"
+      - "package.json"
+      - ".github/workflows/nora-quality.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "openapi/**"
+      - "railway.json"
+      - "render.yaml"
+      - "package.json"
+      - ".github/workflows/nora-quality.yml"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - run: npm ci --prefix backend
+      - run: npm ci --prefix frontend
+      - run: npm run check

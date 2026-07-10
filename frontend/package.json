@@ -1,6 +1,7 @@
 {
   "name": "nora-agents",
   "private": true,
+  "type": "module",
   "version": "1.0.0",
   "engines": {
     "node": "22.x"
@@ -13,7 +14,8 @@
     "dev": "vite",
     "dev:backend": "npm run dev --prefix backend",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },
   "dependencies": {
     "axios": "^1.16.0",

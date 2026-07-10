@@ -1,72 +1,81 @@
-import axios, { AxiosError } from 'axios';
+﻿import axios, { AxiosError } from 'axios';
 import type {
+  Agent,
   AgentMetrics,
+  AgentPayload,
   CaptureConversationPayload,
   CaptureConversationResponse,
   ChatRequestPayload,
   ChatResponse,
+  ConversationRecord,
 } from '../types';
 import { prepareConversationData } from '../utils/categoryClassifier';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 const ASSISTANT_NAME = import.meta.env.VITE_ASSISTANT_NAME || 'NORA';
 const DEBUG_MODE = import.meta.env.VITE_DEBUG_MODE === 'true';
+const AGENT_ADMIN_STORAGE_KEY = 'nora-agent-admin-key';
 
-// ============================================
-// NORMALIZATION HELPERS FOR RECHARTS
-// ============================================
+function getStoredAgentAdminKey(): string {
+  if (typeof window === 'undefined') return '';
+  return window.sessionStorage.getItem(AGENT_ADMIN_STORAGE_KEY) || '';
+}
 
-/**
- * Ensure value is an array, return empty array otherwise
- */
-function toArray<T>(value: any): T[] {
+function storeAgentAdminKey(value: string) {
+  if (typeof window === 'undefined') return;
+  const cleanValue = value.trim();
+  if (cleanValue) {
+    window.sessionStorage.setItem(AGENT_ADMIN_STORAGE_KEY, cleanValue);
+  } else {
+    window.sessionStorage.removeItem(AGENT_ADMIN_STORAGE_KEY);
+  }
+}
+
+type ApiListResponse<T> = {
+  status?: string;
+  data?: T[];
+  count?: number;
+};
+
+type ApiEntityResponse<T> = {
+  status?: string;
+  data?: T;
+};
+
+type MetricsApiResponse = Omit<AgentMetrics, 'lastUpdated'> & {
+  status?: string;
+  lastUpdated?: string | Date;
+};
+
+function toArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? value : [];
 }
 
-/**
- * Normalize API responses that may be arrays or wrapped in containers
- */
-function normalizeArrayResponse(response: any): any[] {
+function normalizeArrayResponse(response: unknown): unknown[] {
   if (Array.isArray(response)) return response;
-  if (Array.isArray(response?.data)) return response.data;
+  if (typeof response === 'object' && response !== null && Array.isArray((response as { data?: unknown }).data)) {
+    return (response as { data: unknown[] }).data;
+  }
   return [];
 }
 
-/**
- * Convert object { topic: count } to array for Recharts
- * Input: { "Travel Info": 5, "Flight Details": 12 }
- * Output: [{ topic: "Travel Info", count: 5 }, { topic: "Flight Details", count: 12 }]
- */
-function normalizeByTopic(byTopic: any): Array<{ topic: string; count: number }> {
+function normalizeByTopic(byTopic: unknown): Array<{ topic: string; count: number }> {
   if (Array.isArray(byTopic)) {
-    return byTopic.map(item => ({
-      topic: String(item?.topic || item?.name || ''),
-      count: Number(item?.count || item?.value || 0),
+    return byTopic.map((item) => ({
+      topic: String((item as { topic?: unknown; name?: unknown })?.topic || (item as { name?: unknown })?.name || ''),
+      count: Number((item as { count?: unknown; value?: unknown })?.count || (item as { value?: unknown })?.value || 0),
     }));
   }
 
-  return Object.entries(byTopic || {}).map(([topic, count]) => ({
+  return Object.entries((byTopic || {}) as Record<string, unknown>).map(([topic, count]) => ({
     topic: String(topic),
     count: Number(count) || 0,
   }));
 }
 
-// True when using CTM backend format (set VITE_BACKEND_TYPE=ctm)
 const isCTMBackend =
   import.meta.env.VITE_BACKEND_TYPE === 'ctm' ||
   API_BASE_URL.includes('ctm-analyzer-backend');
-
-/**
- * Build absolute URL for API endpoints
- * - If VITE_API_BASE_URL is set, use it as base
- * - If empty, use relative paths (same domain)
- */
-function buildUrl(path: string): string {
-  if (!API_BASE_URL) return path; // Use relative path (same domain)
-  const cleanBase = API_BASE_URL.replace(/\/$/, ''); // Remove trailing slash
-  const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  return `${cleanBase}${cleanPath}`;
-}
 
 interface CTMConversacion {
   id: string;
@@ -95,32 +104,32 @@ function mapCTMToAgentMetrics(ctm: CTMMetricsResponse): AgentMetrics {
   const today = new Date().toDateString();
   const detalles = ctm.detalles || [];
   const todayCount = detalles.filter(
-    (d) => new Date(d.timestamp).toDateString() === today,
+    (item) => new Date(item.timestamp).toDateString() === today,
   ).length;
   const precisionRate = (ctm.score_precision || 3) / 5;
-  const hallucinationRate = parseFloat(((1 - precisionRate) * 100).toFixed(2));
+  const hallucinationRate = Number(((1 - precisionRate) * 100).toFixed(2));
 
   return {
     conversations: {
       total: ctm.total_conversaciones,
       today: todayCount,
       averageDuration: 4.5,
-      averageSatisfaction: parseFloat((ctm.score_promedio || 0).toFixed(2)),
+      averageSatisfaction: Number((ctm.score_promedio || 0).toFixed(2)),
       trend: 0,
     },
     performance: {
       uptime: 99.8,
       averageLatency: 245,
-      errorRate: parseFloat((hallucinationRate / 10).toFixed(2)),
+      errorRate: Number((hallucinationRate / 10).toFixed(2)),
       requestsPerMinute: ctm.total_conversaciones,
       peakLatency: 890,
     },
     hallucination: {
       rate: hallucinationRate,
-      count: detalles.filter((d) => d.score_precision < 3).length,
-      factualAccuracy: parseFloat((precisionRate * 100).toFixed(2)),
+      count: detalles.filter((item) => item.score_precision < 3).length,
+      factualAccuracy: Number((precisionRate * 100).toFixed(2)),
       byTopic: {
-        Precisión: ctm.score_precision,
+        Precision: ctm.score_precision,
         Claridad: ctm.score_claridad,
         Relevancia: ctm.score_relevancia,
         Completitud: ctm.score_completitud,
@@ -132,8 +141,8 @@ function mapCTMToAgentMetrics(ctm: CTMMetricsResponse): AgentMetrics {
 }
 
 if (DEBUG_MODE) {
-  console.log('📡 Usando API Base URL:', API_BASE_URL);
-  console.log('🐛 Debug mode activado');
+  console.log('[API] Base URL:', API_BASE_URL || 'same-origin');
+  console.log('[API] Debug mode active');
 }
 
 const apiClient = axios.create({
@@ -144,52 +153,76 @@ const apiClient = axios.create({
   },
 });
 
-// Request interceptor - log outgoing requests
 apiClient.interceptors.request.use(
   (config) => {
     if (DEBUG_MODE) {
-      console.log(`📤 ${config.method?.toUpperCase()} ${config.url}`);
+      console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`);
     }
+
+    const adminKey = getStoredAgentAdminKey();
+    if (adminKey && !config.headers.get('X-Agent-Admin-Key')) {
+      config.headers.set('X-Agent-Admin-Key', adminKey);
+    }
+
     return config;
   },
-  (error) => {
-    console.error('❌ Request Error:', error);
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error),
 );
 
-// Response interceptor - log responses and errors
 apiClient.interceptors.response.use(
   (response) => {
     if (DEBUG_MODE) {
-      console.log(`✅ ${response.status} ${response.config.url}`);
+      console.log(`[API] ${response.status} ${response.config.url}`);
     }
     return response;
   },
   (error) => {
     const axiosError = error as AxiosError;
-    const message = (axiosError.response?.data as Record<string, any>)?.message || 
-                    axiosError.message || 
-                    'Unknown error';
+    const data = axiosError.response?.data as { message?: string } | undefined;
+    const message = data?.message || axiosError.message || 'Unknown error';
     const status = axiosError.response?.status || 'N/A';
-    console.error(`❌ API Error [${status}]:`, message);
+    console.error(`[API] Error [${status}]:`, message);
     return Promise.reject(error);
-  }
+  },
 );
 
 export const apiService = {
-  /**
-   * Verifica la conectividad con el backend
-   */
-  async checkHealth(): Promise<boolean> {
+  getAgentAdminKey(): string {
+    return getStoredAgentAdminKey();
+  },
+
+  setAgentAdminKey(value: string) {
+    storeAgentAdminKey(value);
+  },
+
+  clearAgentAdminKey() {
+    storeAgentAdminKey('');
+  },
+
+  async verifyAgentAdminKey(value: string): Promise<boolean> {
+    const cleanValue = value.trim();
+    if (!cleanValue) return false;
+
     try {
-      const response = await apiClient.get('/health');
-      if (DEBUG_MODE) {
-        console.log('✅ Backend health check passed:', response.data);
-      }
+      await apiClient.post(
+        '/api/agents/admin/verify',
+        {},
+        { headers: { 'X-Agent-Admin-Key': cleanValue } },
+      );
+      storeAgentAdminKey(cleanValue);
       return true;
     } catch (error) {
-      console.error('❌ Backend health check failed:', error);
+      console.error('Error verifying agent access:', error);
+      return false;
+    }
+  },
+
+  async checkHealth(): Promise<boolean> {
+    try {
+      await apiClient.get('/health');
+      return true;
+    } catch (error) {
+      console.error('Backend health check failed:', error);
       return false;
     }
   },
@@ -201,123 +234,141 @@ export const apiService = {
       );
       return mapCTMToAgentMetrics(response.data);
     }
-    const response = await apiClient.get('/api/metrics');
+
+    const response = await apiClient.get<MetricsApiResponse>('/api/metrics');
     return {
       conversations: response.data.conversations,
       performance: response.data.performance,
       hallucination: response.data.hallucination,
+      usuariosMetricas: response.data.usuariosMetricas,
+      preguntasMetricas: response.data.preguntasMetricas,
+      database: response.data.database,
       lastUpdated: new Date(response.data.lastUpdated || new Date()),
     };
   },
 
-  async getConversationHistory(limit: number = 24): Promise<Array<{ timestamp: string; count: number; satisfaction: number }>> {
+  async getConversationHistory(limit = 24): Promise<Array<{ timestamp: string; count: number; satisfaction: number }>> {
     try {
       if (isCTMBackend) {
         const response = await apiClient.get<CTMMetricsResponse>(
           `/api/metricas-asistente?asistente=${ASSISTANT_NAME}`,
         );
-        const detalles = response.data.detalles || [];
         const hourlyMap = new Map<string, { count: number; totalScore: number }>();
-        detalles.forEach((d) => {
-          const hour = new Date(d.timestamp).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
-          const ex = hourlyMap.get(hour) || { count: 0, totalScore: 0 };
-          hourlyMap.set(hour, { count: ex.count + 1, totalScore: ex.totalScore + (d.score_promedio || 3) });
+        response.data.detalles.forEach((item) => {
+          const hour = new Date(item.timestamp).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+          const existing = hourlyMap.get(hour) || { count: 0, totalScore: 0 };
+          hourlyMap.set(hour, { count: existing.count + 1, totalScore: existing.totalScore + (item.score_promedio || 3) });
         });
         return Array.from(hourlyMap.entries())
           .map(([timestamp, data]) => ({
             timestamp,
             count: data.count,
-            satisfaction: parseFloat((data.totalScore / data.count).toFixed(1)),
+            satisfaction: Number((data.totalScore / data.count).toFixed(1)),
           }))
           .slice(-limit);
       }
-      const response = await apiClient.get(`/api/conversations/history?limit=${limit}`);
-      const data = response.data;
 
-      // Normalize: return array directly or extract from container
-      if (Array.isArray(data)) {
-        return data;
-      }
-      if (Array.isArray(data?.data)) {
-        return data.data;
-      }
-      return [];
+      const response = await apiClient.get(`/api/conversations/history?limit=${limit}`);
+      return normalizeArrayResponse(response.data) as Array<{ timestamp: string; count: number; satisfaction: number }>;
     } catch (error) {
       console.error('Error fetching conversation history:', error);
       return [];
     }
   },
 
-  async getPerformanceHistory(limit: number = 24): Promise<Array<{ timestamp: string; latency: number; errors: number }>> {
+  async getPerformanceHistory(limit = 24): Promise<Array<{ timestamp: string; latency: number; errors: number }>> {
     try {
       if (isCTMBackend) {
-        return Array.from({ length: Math.min(limit, 12) }, (_, i) => ({
-          timestamp: new Date(Date.now() - (11 - i) * 3600000).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }),
-          latency: Math.floor(Math.random() * 200 + 150),
-          errors: 0,
+        const response = await apiClient.get<CTMMetricsResponse>(
+          `/api/metricas-asistente?asistente=${ASSISTANT_NAME}`,
+        );
+        return response.data.detalles.slice(-limit).map((item) => ({
+          timestamp: new Date(item.timestamp).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }),
+          latency: 0,
+          errors: item.score_precision < 3 ? 1 : 0,
         }));
       }
-      const response = await apiClient.get(`/api/performance/history?limit=${limit}`);
-      const data = response.data;
 
-      // Normalize: return array directly or extract from container
-      if (Array.isArray(data)) {
-        return data;
-      }
-      if (Array.isArray(data?.data)) {
-        return data.data;
-      }
-      return [];
+      const response = await apiClient.get(`/api/performance/history?limit=${limit}`);
+      return normalizeArrayResponse(response.data) as Array<{ timestamp: string; latency: number; errors: number }>;
     } catch (error) {
       console.error('Error fetching performance history:', error);
       return [];
     }
   },
 
-  async getHallucinationHistory(limit: number = 7): Promise<Array<{ date: string; rate: number; count: number }>> {
+  async getHallucinationHistory(limit = 7): Promise<Array<{ date: string; rate: number; count: number }>> {
     try {
       if (isCTMBackend) {
         const response = await apiClient.get<CTMMetricsResponse>(
           `/api/metricas-asistente?asistente=${ASSISTANT_NAME}`,
         );
-        const detalles = response.data.detalles || [];
         const dayMap = new Map<string, { count: number; totalPrecision: number }>();
-        detalles.forEach((d) => {
-          const day = new Date(d.timestamp).toLocaleDateString('es');
-          const ex = dayMap.get(day) || { count: 0, totalPrecision: 0 };
-          dayMap.set(day, { count: ex.count + 1, totalPrecision: ex.totalPrecision + (d.score_precision || 3) });
+        response.data.detalles.forEach((item) => {
+          const day = new Date(item.timestamp).toLocaleDateString('es');
+          const existing = dayMap.get(day) || { count: 0, totalPrecision: 0 };
+          dayMap.set(day, { count: existing.count + 1, totalPrecision: existing.totalPrecision + (item.score_precision || 3) });
         });
         return Array.from(dayMap.entries())
           .map(([date, data]) => ({
             date,
-            rate: parseFloat(((1 - (data.totalPrecision / data.count) / 5) * 100).toFixed(2)),
+            rate: Number(((1 - (data.totalPrecision / data.count) / 5) * 100).toFixed(2)),
             count: data.count,
           }))
           .slice(-limit);
       }
-      const response = await apiClient.get(`/api/hallucinations/history?limit=${limit}`);
-      const data = response.data;
 
-      // Normalize: return array directly or extract from container
-      if (Array.isArray(data)) {
-        return data;
-      }
-      if (Array.isArray(data?.data)) {
-        return data.data;
-      }
-      return [];
+      const response = await apiClient.get(`/api/hallucinations/history?limit=${limit}`);
+      return normalizeArrayResponse(response.data) as Array<{ date: string; rate: number; count: number }>;
     } catch (error) {
       console.error('Error fetching hallucination history:', error);
       return [];
     }
   },
 
-  /**
-   * Obtiene detalles de una conversación específica
-   */
-  async getConversationDetails(id: string): Promise<any> {
+  async getAgents(): Promise<Agent[]> {
     try {
-      const response = await apiClient.get(`/api/conversations/${id}`);
+      const response = await apiClient.get<ApiListResponse<Agent>>('/api/agents');
+      return response.data.data || [];
+    } catch (error) {
+      console.error('Error fetching agents:', error);
+      return [];
+    }
+  },
+
+  async createAgent(payload: AgentPayload): Promise<Agent | null> {
+    try {
+      const response = await apiClient.post<ApiEntityResponse<Agent>>('/api/agents', payload);
+      return response.data.data || null;
+    } catch (error) {
+      console.error('Error creating agent:', error);
+      return null;
+    }
+  },
+
+  async updateAgent(id: string, payload: AgentPayload): Promise<Agent | null> {
+    try {
+      const response = await apiClient.patch<ApiEntityResponse<Agent>>(`/api/agents/${id}`, payload);
+      return response.data.data || null;
+    } catch (error) {
+      console.error('Error updating agent:', error);
+      return null;
+    }
+  },
+
+  async testAgent(id: string, pregunta: string): Promise<ChatResponse | null> {
+    try {
+      const response = await apiClient.post<ChatResponse>(`/api/agents/${id}/test`, { pregunta });
+      return response.data;
+    } catch (error) {
+      console.error('Error testing agent:', error);
+      return null;
+    }
+  },
+
+  async getConversationDetails(id: string): Promise<ConversationRecord | null> {
+    try {
+      const response = await apiClient.get<ConversationRecord>(`/api/conversations/${id}`);
       return response.data;
     } catch (error) {
       console.error('Error fetching conversation details:', error);
@@ -325,40 +376,23 @@ export const apiService = {
     }
   },
 
-  async getConversations(limit: number = 100): Promise<any> {
+  async getConversations(limit = 100): Promise<{ status: string; data: ConversationRecord[]; count: number }> {
     try {
-      const response = await apiClient.get(`/api/conversations?limit=${limit}`);
+      const response = await apiClient.get<ApiListResponse<ConversationRecord> | ConversationRecord[]>(`/api/conversations?limit=${limit}`);
       const data = response.data;
 
-      // Normalize response: extract array from container if needed
-      if (data?.status === 'success' && Array.isArray(data.data)) {
-        return {
-          status: 'success',
-          data: data.data,
-          count: data.count || data.data.length,
-        };
-      }
-
       if (Array.isArray(data)) {
-        return {
-          status: 'success',
-          data: data,
-          count: data.length,
-        };
+        return { status: 'success', data, count: data.length };
       }
 
       return {
-        status: 'success',
-        data: [],
-        count: 0,
+        status: data.status || 'success',
+        data: data.data || [],
+        count: data.count || data.data?.length || 0,
       };
     } catch (error) {
       console.error('Error fetching conversations:', error);
-      return {
-        status: 'error',
-        data: [],
-        count: 0,
-      };
+      return { status: 'error', data: [], count: 0 };
     }
   },
 
@@ -374,27 +408,6 @@ export const apiService = {
     }
   },
 
-  /**
-   * Captura una conversación de Nora usando el endpoint del OpenAPI
-   */
-  async captureConversation(
-    payload: CaptureConversationPayload,
-  ): Promise<CaptureConversationResponse | null> {
-    try {
-      const response = await apiClient.post<CaptureConversationResponse>(
-        '/api/capturar-conversacion',
-        payload,
-      );
-      return response.data;
-    } catch (error) {
-      console.error('Error capturing conversation:', error);
-      return null;
-    }
-  },
-
-  /**
-   * Genera respuesta con GPT desde backend
-   */
   async chat(payload: ChatRequestPayload): Promise<ChatResponse | null> {
     try {
       const response = await apiClient.post<ChatResponse>('/api/chat', payload);
@@ -405,66 +418,20 @@ export const apiService = {
     }
   },
 
-  /**
-   * Captura una conversación con análisis automático de categoría
-   *
-   * Características:
-   * - Clasificación automática en 9 categorías
-   * - Generación automática de pregunta_base
-   * - Incluye campos: categoria, pregunta_base, fuente, tipo_interaccion
-   *
-   * Payload requerido mínimo:
-   * {
-   *   pregunta: "pregunta del usuario",
-   *   respuesta: "respuesta completa generada"
-   * }
-   *
-   * Campos opcionales (se rellenan automáticamente si no se proporcionan):
-   * {
-   *   usuario_nombre?: "nombre del usuario",
-   *   usuario_email?: "email del usuario",
-   *   usuario_id?: "ID del usuario",
-   *   categoria?: "categoría (se clasifica automáticamente)",
-   *   pregunta_base?: "pregunta base (se genera automáticamente)"
-   * }
-   */
-  async captureConversation(data: any): Promise<any> {
+  async captureConversation(data: CaptureConversationPayload): Promise<CaptureConversationResponse | null> {
     try {
-      // Endpoint siempre es /api/capturar-conversacion (respuesta ya existe)
-      const endpoint = buildUrl('/api/capturar-conversacion');
-
-      // Preparar payload con clasificación automática y valores por defecto
-      const payload = prepareConversationData(data);
-
-      if (DEBUG_MODE) {
-        console.log('[DEBUG] 📊 Capturando conversación con categorización:');
-        console.log('  - Pregunta:', payload.pregunta);
-        console.log('  - Categoría detectada:', payload.categoria);
-        console.log('  - Pregunta Base:', payload.pregunta_base);
-        console.log('  - Usuario:', payload.usuario_nombre);
-        console.log('  - Fuente:', payload.fuente);
-        console.log('  - Tipo de interacción:', payload.tipo_interaccion);
-      }
-
-      const response = await apiClient.post(endpoint, payload);
-
-      if (DEBUG_MODE) {
-        console.log('[DEBUG] ✅ Conversación capturada exitosamente:', response.data);
-      }
-
+      const payload = prepareConversationData(data) as CaptureConversationPayload;
+      const response = await apiClient.post<CaptureConversationResponse>('/api/capturar-conversacion', payload);
       return response.data;
     } catch (error) {
-      const errorMsg = error instanceof AxiosError
-        ? `${error.response?.status || 'Error'}: ${error.response?.statusText || error.message}`
-        : error instanceof Error ? error.message : 'Error desconocido';
-
-      console.error('❌ Error capturando conversación:', errorMsg);
-      console.error('Detalles completos:', error);
-
-      throw error;
+      if (error instanceof AxiosError) {
+        console.error('Error capturing conversation:', error.response?.status || error.message);
+      } else {
+        console.error('Error capturing conversation:', error);
+      }
+      return null;
     }
   },
 };
 
-// Export normalization helpers for use in components
 export { toArray, normalizeArrayResponse, normalizeByTopic };

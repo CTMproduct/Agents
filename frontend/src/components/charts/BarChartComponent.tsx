@@ -1,10 +1,10 @@
-import React from 'react';
+﻿import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import '../../styles/Chart.css';
 
 interface BarChartComponentProps {
   title: string;
-  data: any[];
+  data: Array<Record<string, unknown>>;
   dataKey: string;
   loading?: boolean;
   color?: string;
