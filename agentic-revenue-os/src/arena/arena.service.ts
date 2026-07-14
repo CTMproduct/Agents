@@ -10,6 +10,7 @@ import { createHash } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { LlmProvider } from '../agents/llm.provider';
+import { eloToTier } from '../gamification/ranked.service';
 import { runCostUsd } from '../crm/llm-pricing';
 import { PackageProposalSchema, PackageProposalJsonSchema } from './package-schema';
 import { AgentRunResult, ArenaAgentConfig, EloUpdate } from './arena.types';
@@ -167,8 +168,9 @@ export class ArenaService {
       );
 
       await Promise.all(
-        eloUpdates.map((update) =>
-          tx.agentProfile.update({
+        eloUpdates.map((update) => {
+          const rank = eloToTier(update.newElo); // ELO -> tier emocional (Hierro..Challenger)
+          return tx.agentProfile.update({
             where: { id: update.profileId },
             data: {
               elo: update.newElo,
@@ -176,9 +178,12 @@ export class ArenaService {
               level: update.newLevel,
               wins: { increment: update.isWinner ? 1 : 0 },
               losses: { increment: update.isWinner ? 0 : 1 },
+              tier: rank.tier,
+              tierDivision: rank.division,
+              streak: update.isWinner ? { increment: 1 } : 0, // racha de victorias (se corta al perder)
             },
-          }),
-        ),
+          });
+        }),
       );
 
       return tx.battle.findUnique({ where: { id: battle.id }, include: this.battleInclude() });
@@ -237,6 +242,7 @@ export class ArenaService {
       outputTokens: result.outputTokens,
       tokenCost: new Prisma.Decimal(result.tokenCost.toFixed(6)),
       latencyMs: result.latencyMs,
+      provider: result.provider || 'unknown',
     };
   }
 
@@ -263,6 +269,7 @@ export class ArenaService {
           tokenCost: runCostUsd(resp.modelName, resp.inputTokens, resp.outputTokens),
           latencyMs: Date.now() - startTime,
           modelUsed: resp.modelName,
+          provider: resp.provider ?? 'unknown',
         };
       }
 
@@ -274,6 +281,7 @@ export class ArenaService {
         tokenCost: runCostUsd(resp.modelName, resp.inputTokens, resp.outputTokens),
         latencyMs: resp.latencyMs,
         modelUsed: resp.modelName,
+        provider: resp.provider ?? 'unknown',
       };
     } catch (error) {
       return {
@@ -284,6 +292,7 @@ export class ArenaService {
         tokenCost: 0,
         latencyMs: Date.now() - startTime,
         modelUsed: agent.modelName ?? '(default)',
+        provider: 'error',
       };
     }
   }

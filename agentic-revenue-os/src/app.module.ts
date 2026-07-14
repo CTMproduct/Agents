@@ -25,6 +25,7 @@ import { SecurityModule } from './security/security.module';
 import { ArenaModule } from './arena/arena.module';
 import { HeroesModule } from './heroes/heroes.module';
 import { TrainingModule } from './training/training.module';
+import { GamificationModule } from './gamification/gamification.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { TrainingModule } from './training/training.module';
     ArenaModule,
     HeroesModule,
     TrainingModule,
+    GamificationModule,
   ],
   controllers: [RootController, HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
