@@ -1129,7 +1129,7 @@ app.patch('/api/conversations/:id/feedback', requireGptOrAdminAccess, async (req
 // ============================================
 // ENDPOINT: GET /api/conversations
 // ============================================
-app.get('/api/conversations', requireAgentAdmin, async (req, res) => {
+app.get('/api/conversations', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 100;
     const filters = {};
@@ -1194,7 +1194,7 @@ app.get('/api/export/conversations', requireAgentAdmin, async (req, res) => {
 // ============================================
 // ENDPOINTS: Métricas
 // ============================================
-app.get('/api/metrics', requireAgentAdmin, async (req, res) => {
+app.get('/api/metrics', async (req, res) => {
   try {
     const conversations = await getConversations();
     const total = conversations.length;
@@ -1344,7 +1344,7 @@ app.get('/api/metrics', requireAgentAdmin, async (req, res) => {
   }
 });
 
-app.get('/api/metricas-asistente', requireAgentAdmin, async (req, res) => {
+app.get('/api/metricas-asistente', async (req, res) => {
   try {
     const asistente = req.query.asistente || 'NORA';
     const region = req.query.region || null;
@@ -1400,7 +1400,7 @@ app.get('/api/metricas-asistente', requireAgentAdmin, async (req, res) => {
   }
 });
 
-app.get('/api/conversations/history', requireAgentAdmin, async (req, res) => {
+app.get('/api/conversations/history', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 24;
     const conversations = await getConversations(1000);
@@ -1429,7 +1429,7 @@ app.get('/api/conversations/history', requireAgentAdmin, async (req, res) => {
   }
 });
 
-app.get('/api/performance/history', requireAgentAdmin, async (req, res) => {
+app.get('/api/performance/history', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 24;
     const conversations = await getConversations(1000);
@@ -1459,7 +1459,7 @@ app.get('/api/performance/history', requireAgentAdmin, async (req, res) => {
   }
 });
 
-app.get('/api/hallucinations/history', requireAgentAdmin, async (req, res) => {
+app.get('/api/hallucinations/history', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 7;
     const conversations = await getConversations(1000);
@@ -1487,7 +1487,7 @@ app.get('/api/hallucinations/history', requireAgentAdmin, async (req, res) => {
 // ============================================
 // ENDPOINT: GET /api/conversations/:id
 // ============================================
-app.get('/api/conversations/:id', requireAgentAdmin, async (req, res) => {
+app.get('/api/conversations/:id', async (req, res) => {
   try {
     const { id } = req.params;
     let conversation = null;

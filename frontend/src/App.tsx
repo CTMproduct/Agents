@@ -16,28 +16,23 @@ function App() {
   const [view, setView] = useState<AppView>('dashboard');
   const [accessKey, setAccessKey] = useState(() => apiService.getAgentAdminKey());
   const [authenticated, setAuthenticated] = useState(false);
-  const [checkingAccess, setCheckingAccess] = useState(true);
   const [signingIn, setSigningIn] = useState(false);
   const [accessError, setAccessError] = useState<string | null>(null);
 
+  // El dashboard (Resumen) es publico y no necesita esto; solo restauramos
+  // la sesion de administracion por si el usuario ya habia iniciado sesion
+  // antes para editar agentes.
   useEffect(() => {
-    const timerId = window.setTimeout(() => {
-      const storedKey = apiService.getAgentAdminKey();
-      if (!storedKey) {
-        setCheckingAccess(false);
-        return;
+    const storedKey = apiService.getAgentAdminKey();
+    if (!storedKey) return;
+
+    void apiService.verifyAgentAdminKey(storedKey).then((isValid) => {
+      setAuthenticated(isValid);
+      if (!isValid) {
+        apiService.clearAgentAdminKey();
+        setAccessKey('');
       }
-
-      void apiService.verifyAgentAdminKey(storedKey).then((isValid) => {
-        setAuthenticated(isValid);
-        if (!isValid) {
-          apiService.clearAgentAdminKey();
-          setAccessKey('');
-        }
-      }).finally(() => setCheckingAccess(false));
-    }, 0);
-
-    return () => window.clearTimeout(timerId);
+    });
   }, []);
 
   const handleSignIn = async (event: FormEvent<HTMLFormElement>) => {
@@ -61,49 +56,6 @@ function App() {
     setAccessError(null);
     setView('dashboard');
   };
-
-  if (checkingAccess) {
-    return (
-      <main className="app-auth">
-        <div className="app-loading">Validando acceso...</div>
-      </main>
-    );
-  }
-
-  if (!authenticated) {
-    return (
-      <main className="app-auth">
-        <section className="app-auth__panel" aria-labelledby="access-title">
-          <div className="app-auth__brand">
-            <span className="app-nav__mark">N</span>
-            <div>
-              <h1 id="access-title">Nora Control</h1>
-              <p>Panel interno de agentes CTM</p>
-            </div>
-          </div>
-
-          <form className="app-auth__form" onSubmit={handleSignIn}>
-            <label>
-              <span>Clave de administracion</span>
-              <input
-                type="password"
-                value={accessKey}
-                onChange={(event) => setAccessKey(event.target.value)}
-                autoComplete="current-password"
-                autoFocus
-                required
-              />
-            </label>
-            <button type="submit" disabled={signingIn}>
-              {signingIn ? 'Validando...' : 'Ingresar'}
-            </button>
-          </form>
-
-          {accessError && <p className="app-auth__error">{accessError}</p>}
-        </section>
-      </main>
-    );
-  }
 
   return (
     <div className="app">
@@ -134,14 +86,52 @@ function App() {
             </button>
           </div>
 
-          <button type="button" className="app-nav__logout" onClick={handleSignOut}>
-            Salir
-          </button>
+          {authenticated && (
+            <button type="button" className="app-nav__logout" onClick={handleSignOut}>
+              Salir
+            </button>
+          )}
         </div>
       </nav>
 
       <Suspense fallback={<div className="app-loading">Cargando...</div>}>
-        {view === 'dashboard' ? <Dashboard /> : <AgentStudio />}
+        {view === 'dashboard' && <Dashboard />}
+
+        {view === 'agents' &&
+          (authenticated ? (
+            <AgentStudio />
+          ) : (
+            <main className="app-auth">
+              <section className="app-auth__panel" aria-labelledby="access-title">
+                <div className="app-auth__brand">
+                  <span className="app-nav__mark">N</span>
+                  <div>
+                    <h1 id="access-title">Editar agentes</h1>
+                    <p>Esta seccion requiere la clave de administracion</p>
+                  </div>
+                </div>
+
+                <form className="app-auth__form" onSubmit={handleSignIn}>
+                  <label>
+                    <span>Clave de administracion</span>
+                    <input
+                      type="password"
+                      value={accessKey}
+                      onChange={(event) => setAccessKey(event.target.value)}
+                      autoComplete="current-password"
+                      autoFocus
+                      required
+                    />
+                  </label>
+                  <button type="submit" disabled={signingIn}>
+                    {signingIn ? 'Validando...' : 'Ingresar'}
+                  </button>
+                </form>
+
+                {accessError && <p className="app-auth__error">{accessError}</p>}
+              </section>
+            </main>
+          ))}
       </Suspense>
     </div>
   );

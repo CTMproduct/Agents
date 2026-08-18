@@ -15,6 +15,9 @@ export const ConversationsList: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'score'>('recent');
+  // El export (CSV/JSON) requiere la clave de administracion; solo lo
+  // ofrecemos si ya hay una sesion de Agentes activa en este navegador.
+  const canExport = Boolean(apiService.getAgentAdminKey());
 
   const fetchConversations = useCallback(async () => {
     try {
@@ -124,21 +127,29 @@ export const ConversationsList: React.FC = () => {
             Actualizar
           </button>
 
-          <button
-            onClick={() => handleExport('csv')}
-            className="conversations-list__button conversations-list__button--export"
-            title="Descargar como CSV para Excel"
-          >
-            Descargar CSV
-          </button>
+          {canExport ? (
+            <>
+              <button
+                onClick={() => handleExport('csv')}
+                className="conversations-list__button conversations-list__button--export"
+                title="Descargar como CSV para Excel"
+              >
+                Descargar CSV
+              </button>
 
-          <button
-            onClick={() => handleExport('json')}
-            className="conversations-list__button conversations-list__button--export"
-            title="Descargar como JSON"
-          >
-            Descargar JSON
-          </button>
+              <button
+                onClick={() => handleExport('json')}
+                className="conversations-list__button conversations-list__button--export"
+                title="Descargar como JSON"
+              >
+                Descargar JSON
+              </button>
+            </>
+          ) : (
+            <span className="conversations-list__export-hint" title="Inicia sesion en la pestaña Agentes para exportar">
+              Exportar requiere clave de administracion
+            </span>
+          )}
         </div>
       </div>
 
