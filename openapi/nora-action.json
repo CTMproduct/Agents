@@ -2,8 +2,8 @@
   "openapi": "3.1.1",
   "info": {
     "title": "Nora Conversation Capture Action",
-    "version": "1.1.0",
-    "description": "OpenAPI schema for the ChatGPT action that sends conversation captures to the Nora backend."
+    "version": "1.2.0",
+    "description": "OpenAPI schema for the ChatGPT action that sends conversation captures, hotel feedback and human-escalation data to the Nora backend."
   },
   "servers": [
     {
@@ -16,6 +16,7 @@
       "post": {
         "summary": "Genera respuesta de Nora con GPT",
         "operationId": "generateNoraResponse",
+        "security": [{ "GptApiKeyAuth": [] }],
         "requestBody": {
           "required": true,
           "content": {
@@ -40,6 +41,9 @@
           "400": {
             "description": "Solicitud inválida"
           },
+          "401": {
+            "description": "X-Gpt-Api-Key inválida o ausente (solo si el backend la tiene configurada)"
+          },
           "500": {
             "description": "Error interno del servidor"
           }
@@ -50,6 +54,7 @@
       "post": {
         "summary": "Genera una respuesta de Nora y captura la conversación en el backend",
         "operationId": "generateAndCaptureConversation",
+        "security": [{ "GptApiKeyAuth": [] }],
         "requestBody": {
           "required": true,
           "content": {
@@ -74,6 +79,9 @@
           "400": {
             "description": "Solicitud inválida"
           },
+          "401": {
+            "description": "X-Gpt-Api-Key inválida o ausente (solo si el backend la tiene configurada)"
+          },
           "500": {
             "description": "Error interno del servidor"
           }
@@ -82,8 +90,10 @@
     },
     "/api/capturar-conversacion": {
       "post": {
-        "summary": "Captura una conversación de Nora",
+        "summary": "Captura una conversación de Nora, opcionalmente con feedback del hotel",
+        "description": "Registra una conversación. Si en ese mismo momento ya se sabe cómo reaccionó el hotel (positivo/negativo, alucinación, escalado a un humano), se puede enviar junto con la captura usando los campos de feedback_* y escalation_*. Si la reacción llega después, usa PATCH /api/conversations/{id}/feedback con el conversationId que devuelve esta llamada.",
         "operationId": "captureConversation",
+        "security": [{ "GptApiKeyAuth": [] }],
         "requestBody": {
           "required": true,
           "content": {
@@ -106,7 +116,54 @@
             }
           },
           "400": {
-            "description": "Solicitud inválida"
+            "description": "Solicitud inválida (falta pregunta/respuesta, o feedback_rating/feedback_category tienen un valor no permitido)"
+          },
+          "401": {
+            "description": "X-Gpt-Api-Key inválida o ausente (solo si el backend la tiene configurada)"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/api/conversations/{id}/feedback": {
+      "patch": {
+        "summary": "Registra el feedback del hotel sobre una conversación ya capturada",
+        "description": "Úsalo cuando la reacción del hotel (positiva/negativa, si fue una alucinación, si se escaló a una persona) llega en un turno posterior al de la captura original. El id es el conversationId devuelto por captureConversation.",
+        "operationId": "registrarFeedbackConversacion",
+        "security": [{ "GptApiKeyAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "conv_123456"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationFeedbackPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Feedback registrado con éxito"
+          },
+          "400": {
+            "description": "feedback_rating o feedback_category invalidos, o no se envio ningun campo"
+          },
+          "401": {
+            "description": "X-Gpt-Api-Key inválida o ausente (solo si el backend la tiene configurada)"
+          },
+          "404": {
+            "description": "No existe una conversacion con ese id"
           },
           "500": {
             "description": "Error interno del servidor"
@@ -116,6 +173,14 @@
     }
   },
   "components": {
+    "securitySchemes": {
+      "GptApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Gpt-Api-Key",
+        "description": "Debe coincidir con GPT_ACTION_API_KEY configurada en Railway. Mientras esa variable no exista, el backend acepta llamadas sin este header (compatibilidad con la Action actual)."
+      }
+    },
     "schemas": {
       "CaptureConversationPayload": {
         "type": "object",
@@ -164,8 +229,78 @@
           "status": {
             "type": "string",
             "example": "capturada"
+          },
+          "feedback_rating": {
+            "$ref": "#/components/schemas/FeedbackRating"
+          },
+          "feedback_category": {
+            "$ref": "#/components/schemas/FeedbackCategory"
+          },
+          "feedback_comment": {
+            "type": "string",
+            "description": "Cita corta de lo que dijo el hotel",
+            "example": "El horario real es 2pm, no 3pm"
+          },
+          "escalated_to_human": {
+            "type": "boolean",
+            "default": false,
+            "example": false
+          },
+          "escalation_target": {
+            "type": "string",
+            "description": "A quien se escalo, por ejemplo hyperguest",
+            "example": "hyperguest"
+          },
+          "escalation_reason": {
+            "type": "string",
+            "example": "El hotel pidio hablar con una persona"
           }
         }
+      },
+      "ConversationFeedbackPayload": {
+        "type": "object",
+        "description": "Al menos uno de feedback_rating, feedback_category o escalated_to_human es requerido.",
+        "properties": {
+          "feedback_rating": {
+            "$ref": "#/components/schemas/FeedbackRating"
+          },
+          "feedback_category": {
+            "$ref": "#/components/schemas/FeedbackCategory"
+          },
+          "feedback_comment": {
+            "type": "string",
+            "example": "El horario real es 2pm, no 3pm"
+          },
+          "escalated_to_human": {
+            "type": "boolean",
+            "example": true
+          },
+          "escalation_target": {
+            "type": "string",
+            "example": "hyperguest"
+          },
+          "escalation_reason": {
+            "type": "string",
+            "example": "El hotel pidio hablar con una persona"
+          }
+        }
+      },
+      "FeedbackRating": {
+        "type": "string",
+        "enum": ["positive", "negative", "neutral"],
+        "description": "Como reacciono el hotel a la respuesta, si lo expreso explicitamente"
+      },
+      "FeedbackCategory": {
+        "type": "string",
+        "enum": [
+          "accurate_helpful",
+          "hallucination",
+          "incomplete",
+          "irrelevant",
+          "needs_human",
+          "other"
+        ],
+        "description": "Usa 'hallucination' SOLO cuando el hotel indico explicitamente que la informacion era incorrecta o inventada. Nunca la marques por tu propia duda interna."
       },
       "ChatCaptureRequestPayload": {
         "type": "object",

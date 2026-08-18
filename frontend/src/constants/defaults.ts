@@ -21,6 +21,17 @@ export const DEFAULT_METRICS: AgentMetrics = {
     factualAccuracy: 0,
     byTopic: {},
   },
+  feedbackHallucination: {
+    rate: 0,
+    count: 0,
+    reviewedCount: 0,
+    positiveRate: 0,
+  },
+  escalation: {
+    rate: 0,
+    count: 0,
+    byTarget: {},
+  },
   lastUpdated: new Date(),
 };
 
@@ -49,6 +60,18 @@ export function mergeMetricsWithDefaults(data?: MetricsInput | null): AgentMetri
       byTopic: {
         ...DEFAULT_METRICS.hallucination.byTopic,
         ...(data?.hallucination?.byTopic || {}),
+      },
+    },
+    feedbackHallucination: {
+      ...DEFAULT_METRICS.feedbackHallucination!,
+      ...(data?.feedbackHallucination || {}),
+    },
+    escalation: {
+      ...DEFAULT_METRICS.escalation!,
+      ...(data?.escalation || {}),
+      byTarget: {
+        ...DEFAULT_METRICS.escalation!.byTarget,
+        ...(data?.escalation?.byTarget || {}),
       },
     },
     usuariosMetricas: data?.usuariosMetricas,

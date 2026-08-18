@@ -115,6 +115,15 @@ async function initPostgres() {
       `ALTER TABLE conversations ADD COLUMN IF NOT EXISTS tokens_input INTEGER DEFAULT 0`,
       `ALTER TABLE conversations ADD COLUMN IF NOT EXISTS tokens_output INTEGER DEFAULT 0`,
       `ALTER TABLE conversations ADD COLUMN IF NOT EXISTS cost_usd DOUBLE PRECISION DEFAULT 0`,
+      // Feedback humano explicito (distinto del score de IA autoevaluado)
+      `ALTER TABLE conversations ADD COLUMN IF NOT EXISTS feedback_rating TEXT`,
+      `ALTER TABLE conversations ADD COLUMN IF NOT EXISTS feedback_category TEXT`,
+      `ALTER TABLE conversations ADD COLUMN IF NOT EXISTS feedback_comment TEXT`,
+      `ALTER TABLE conversations ADD COLUMN IF NOT EXISTS feedback_received_at TIMESTAMPTZ`,
+      // Escalamiento a asistencia humana (ej. HyperGuest)
+      `ALTER TABLE conversations ADD COLUMN IF NOT EXISTS escalated_to_human BOOLEAN DEFAULT FALSE`,
+      `ALTER TABLE conversations ADD COLUMN IF NOT EXISTS escalation_target TEXT`,
+      `ALTER TABLE conversations ADD COLUMN IF NOT EXISTS escalation_reason TEXT`,
     ];
 
     for (const statement of alters) {
@@ -123,6 +132,8 @@ async function initPostgres() {
 
     await pool.query(`CREATE INDEX IF NOT EXISTS conversations_timestamp_idx ON conversations (timestamp DESC)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS conversations_agent_idx ON conversations (agent_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS conversations_feedback_category_idx ON conversations (feedback_category)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS conversations_escalated_idx ON conversations (escalated_to_human)`);
 
     await ensureDefaultAgent();
 
@@ -167,13 +178,22 @@ async function saveConversationPostgres(data) {
   if (!pool) throw new Error('PostgreSQL no configurado');
   if (!pgReady) throw new Error('PostgreSQL not initialized');
 
+  const hasFeedback = Boolean(
+    data.feedback_rating || data.feedback_category || data.escalated_to_human,
+  );
+
   const query = `
     INSERT INTO conversations (
       id, asistente_nombre, pregunta, respuesta, usuario_nombre, usuario_email, usuario_id,
       region, status, score_promedio, timestamp, created_at, updated_at, categoria,
       origen_pais, pregunta_base, fuente, tipo_interaccion, agent_id, agent_version_id,
-      provider, model, latency_ms, tokens_input, tokens_output, cost_usd
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)
+      provider, model, latency_ms, tokens_input, tokens_output, cost_usd,
+      feedback_rating, feedback_category, feedback_comment, feedback_received_at,
+      escalated_to_human, escalation_target, escalation_reason
+    ) VALUES (
+      $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,
+      $27,$28,$29,$30,$31,$32,$33
+    )
     ON CONFLICT (id) DO UPDATE SET
       asistente_nombre = EXCLUDED.asistente_nombre,
       pregunta = EXCLUDED.pregunta,
@@ -198,7 +218,14 @@ async function saveConversationPostgres(data) {
       latency_ms = EXCLUDED.latency_ms,
       tokens_input = EXCLUDED.tokens_input,
       tokens_output = EXCLUDED.tokens_output,
-      cost_usd = EXCLUDED.cost_usd
+      cost_usd = EXCLUDED.cost_usd,
+      feedback_rating = EXCLUDED.feedback_rating,
+      feedback_category = EXCLUDED.feedback_category,
+      feedback_comment = EXCLUDED.feedback_comment,
+      feedback_received_at = EXCLUDED.feedback_received_at,
+      escalated_to_human = EXCLUDED.escalated_to_human,
+      escalation_target = EXCLUDED.escalation_target,
+      escalation_reason = EXCLUDED.escalation_reason
     RETURNING *;
   `;
 
@@ -229,10 +256,49 @@ async function saveConversationPostgres(data) {
     data.tokens_input || 0,
     data.tokens_output || 0,
     data.cost_usd || 0,
+    data.feedback_rating || null,
+    data.feedback_category || null,
+    data.feedback_comment || null,
+    hasFeedback ? new Date().toISOString() : null,
+    Boolean(data.escalated_to_human),
+    data.escalation_target || null,
+    data.escalation_reason || null,
   ];
 
   const result = await pool.query(query, values);
   return result.rows[0];
+}
+
+async function updateConversationFeedbackPostgres(id, feedback = {}) {
+  if (!pool) throw new Error('PostgreSQL no configurado');
+  if (!pgReady) throw new Error('PostgreSQL not initialized');
+
+  const result = await pool.query(
+    `
+      UPDATE conversations SET
+        feedback_rating = COALESCE($2, feedback_rating),
+        feedback_category = COALESCE($3, feedback_category),
+        feedback_comment = COALESCE($4, feedback_comment),
+        escalated_to_human = COALESCE($5, escalated_to_human),
+        escalation_target = COALESCE($6, escalation_target),
+        escalation_reason = COALESCE($7, escalation_reason),
+        feedback_received_at = NOW(),
+        updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `,
+    [
+      id,
+      feedback.feedback_rating ?? null,
+      feedback.feedback_category ?? null,
+      feedback.feedback_comment ?? null,
+      feedback.escalated_to_human ?? null,
+      feedback.escalation_target ?? null,
+      feedback.escalation_reason ?? null,
+    ],
+  );
+
+  return result.rows[0] || null;
 }
 
 async function getConversationsPostgres(limit = 100, filters = {}) {
@@ -249,6 +315,16 @@ async function getConversationsPostgres(limit = 100, filters = {}) {
   if (filters.asistente_nombre) {
     values.push(filters.asistente_nombre);
     conditions.push(`LOWER(asistente_nombre) = LOWER($${values.length})`);
+  }
+
+  if (filters.feedback_category) {
+    values.push(filters.feedback_category);
+    conditions.push(`feedback_category = $${values.length}`);
+  }
+
+  if (filters.escalated_to_human !== undefined) {
+    values.push(filters.escalated_to_human);
+    conditions.push(`escalated_to_human = $${values.length}`);
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -450,6 +526,7 @@ async function disconnectPostgres() {
 module.exports = {
   initPostgres,
   saveConversationPostgres,
+  updateConversationFeedbackPostgres,
   getConversationsPostgres,
   getConversationByIdPostgres,
   getAgentsPostgres,

@@ -21,10 +21,27 @@ export interface HallucinationMetrics {
   byTopic: Record<string, number>;
 }
 
+// Alucinacion basada en feedback humano explicito de los hoteles (distinta de
+// `HallucinationMetrics`, que se calcula con el score de IA autoevaluado).
+export interface FeedbackHallucinationMetrics {
+  rate: number;
+  count: number;
+  reviewedCount: number;
+  positiveRate: number;
+}
+
+export interface EscalationMetrics {
+  rate: number;
+  count: number;
+  byTarget: Record<string, number>;
+}
+
 export interface AgentMetrics {
   conversations: ConversationMetrics;
   performance: PerformanceMetrics;
   hallucination: HallucinationMetrics;
+  feedbackHallucination?: FeedbackHallucinationMetrics;
+  escalation?: EscalationMetrics;
   usuariosMetricas?: {
     byCategoriaUsuario?: Record<string, number>;
     byOrigenPais?: Record<string, number>;
@@ -152,6 +169,36 @@ export interface ConversationRecord {
   tipo_interaccion?: string;
   model?: string;
   latency_ms?: number;
+  feedback_rating?: 'positive' | 'negative' | 'neutral' | string;
+  feedback_category?: string;
+  feedback_comment?: string;
+  feedback_received_at?: string;
+  escalated_to_human?: boolean;
+  escalation_target?: string;
+  escalation_reason?: string;
+}
+
+export type FeedbackRating = 'positive' | 'negative' | 'neutral';
+export type FeedbackCategory =
+  | 'accurate_helpful'
+  | 'hallucination'
+  | 'incomplete'
+  | 'irrelevant'
+  | 'needs_human'
+  | 'other';
+
+export interface ConversationFeedbackPayload {
+  feedback_rating?: FeedbackRating;
+  feedback_category?: FeedbackCategory;
+  feedback_comment?: string;
+  escalated_to_human?: boolean;
+  escalation_target?: string;
+  escalation_reason?: string;
+}
+
+export interface ConversationFilters {
+  feedback_category?: string;
+  escalated?: boolean;
 }
 
 export interface ChartDataPoint {

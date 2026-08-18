@@ -10,6 +10,7 @@ const OpenAI = require('openai');
 const {
   initPostgres,
   saveConversationPostgres,
+  updateConversationFeedbackPostgres,
   getConversationsPostgres,
   getConversationByIdPostgres,
   getAgentsPostgres,
@@ -65,6 +66,16 @@ const DEFAULT_AGENT_VERSION_ID = 'agent_nora_v1';
 const DEFAULT_AGENT_PROMPT = process.env.DEFAULT_AGENT_PROMPT || 'Eres Nora, una asistente de viajes de CTM. Responde en espanol con informacion clara, breve, amable y accionable.';
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const AGENT_ADMIN_KEY = String(process.env.AGENT_ADMIN_KEY || '').trim();
+const GPT_ACTION_API_KEY = String(process.env.GPT_ACTION_API_KEY || '').trim();
+const FEEDBACK_RATINGS = new Set(['positive', 'negative', 'neutral']);
+const FEEDBACK_CATEGORIES = new Set([
+  'accurate_helpful',
+  'hallucination',
+  'incomplete',
+  'irrelevant',
+  'needs_human',
+  'other',
+]);
 const AGENT_MODELS = new Set(
   (process.env.ALLOWED_AGENT_MODELS || 'gpt-4o-mini,gpt-4o,gpt-4.1-mini,gpt-4.1')
     .split(',')
@@ -128,7 +139,7 @@ const corsOptions = {
     return callback(null, false);
   },
   methods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Agent-Admin-Key'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Agent-Admin-Key', 'X-Gpt-Api-Key'],
   credentials: true,
 };
 
@@ -259,7 +270,7 @@ async function saveConversation(data) {
 }
 
 // Helper function to get conversations (PostgreSQL only)
-async function getConversations(limit = 100) {
+async function getConversations(limit = 100, filters = {}) {
   try {
     const isPostgresReady = isPostgresConnected();
     console.log(`\n📖 Getting conversations (limit: ${limit})`);
@@ -267,7 +278,7 @@ async function getConversations(limit = 100) {
 
     if (isPostgresReady) {
       console.log('   Source: PostgreSQL');
-      const result = await getConversationsPostgres(limit);
+      const result = await getConversationsPostgres(limit, filters);
       console.log(`   Retrieved: ${result.length} conversations from PostgreSQL`);
       return result;
     }
@@ -278,9 +289,40 @@ async function getConversations(limit = 100) {
   }
 
   console.log('   Source: Memory Storage (Fallback)');
-  const result = fallbackStorage.conversations.slice(0, limit);
+  let result = fallbackStorage.conversations;
+  if (filters.feedback_category) {
+    result = result.filter((c) => c.feedback_category === filters.feedback_category);
+  }
+  if (filters.escalated_to_human !== undefined) {
+    result = result.filter((c) => Boolean(c.escalated_to_human) === filters.escalated_to_human);
+  }
+  result = result.slice(0, limit);
   console.log(`   Retrieved: ${result.length} conversations from Memory`);
   return result;
+}
+
+// Helper function to attach human feedback to an already-captured conversation
+async function updateConversationFeedback(id, feedback) {
+  if (isPostgresConnected()) {
+    return updateConversationFeedbackPostgres(id, feedback);
+  }
+
+  const index = fallbackStorage.conversations.findIndex((c) => c.id === id || c._id === id);
+  if (index === -1) return null;
+
+  const current = fallbackStorage.conversations[index];
+  fallbackStorage.conversations[index] = {
+    ...current,
+    feedback_rating: feedback.feedback_rating ?? current.feedback_rating,
+    feedback_category: feedback.feedback_category ?? current.feedback_category,
+    feedback_comment: feedback.feedback_comment ?? current.feedback_comment,
+    escalated_to_human: feedback.escalated_to_human ?? current.escalated_to_human,
+    escalation_target: feedback.escalation_target ?? current.escalation_target,
+    escalation_reason: feedback.escalation_reason ?? current.escalation_reason,
+    feedback_received_at: new Date().toISOString(),
+  };
+  saveFallbackStorage();
+  return fallbackStorage.conversations[index];
 }
 
 function slugify(value) {
@@ -398,6 +440,30 @@ function requireAgentAdmin(req, res, next) {
   }
 
   return next();
+}
+
+// Protege los endpoints que llama el Custom GPT (captura y feedback).
+// Mientras GPT_ACTION_API_KEY no este configurada, se mantiene el comportamiento
+// abierto actual para no romper la Action ya publicada en produccion.
+function requireGptApiKey(req, res, next) {
+  if (!GPT_ACTION_API_KEY) {
+    return next();
+  }
+
+  if (!secureCompare(req.get('X-Gpt-Api-Key'), GPT_ACTION_API_KEY)) {
+    return res.status(401).json({ status: 'error', message: 'X-Gpt-Api-Key invalida o ausente' });
+  }
+
+  return next();
+}
+
+// Permite que el feedback lo registre tanto el GPT (X-Gpt-Api-Key) como un admin
+// desde el dashboard (X-Agent-Admin-Key).
+function requireGptOrAdminAccess(req, res, next) {
+  if (hasAgentAdminAccess(req)) {
+    return next();
+  }
+  return requireGptApiKey(req, res, next);
 }
 
 function toPublicAgent(agent) {
@@ -731,6 +797,7 @@ app.get('/api/status', (req, res) => {
       chat: '/api/chat',
       chatCapture: '/api/chat-capturar',
       capture: '/api/capturar-conversacion',
+      captureFeedback: 'PATCH /api/conversations/:id/feedback',
       conversations: '/api/conversations',
       export: '/api/export/conversations',
       frontend: '/',
@@ -740,7 +807,7 @@ app.get('/api/status', (req, res) => {
 // ============================================
 // ENDPOINT: POST /api/chat
 // ============================================
-app.post('/api/chat', aiRateLimit, async (req, res) => {
+app.post('/api/chat', requireGptApiKey, aiRateLimit, async (req, res) => {
   try {
     const { pregunta } = req.body;
 
@@ -780,7 +847,7 @@ app.post('/api/chat', aiRateLimit, async (req, res) => {
 // ============================================
 // ENDPOINT: POST /api/chat-capturar
 // ============================================
-app.post('/api/chat-capturar', aiRateLimit, async (req, res) => {
+app.post('/api/chat-capturar', requireGptApiKey, aiRateLimit, async (req, res) => {
   try {
     const {
       pregunta,
@@ -862,7 +929,7 @@ app.post('/api/chat-capturar', aiRateLimit, async (req, res) => {
 // ============================================
 // ENDPOINT: POST /api/capturar-conversacion
 // ============================================
-app.post('/api/capturar-conversacion', aiRateLimit, async (req, res) => {
+app.post('/api/capturar-conversacion', requireGptApiKey, aiRateLimit, async (req, res) => {
   try {
     const {
       asistente_nombre,
@@ -879,6 +946,13 @@ app.post('/api/capturar-conversacion', aiRateLimit, async (req, res) => {
       pregunta_base,
       fuente,
       tipo_interaccion,
+      // Feedback humano y escalamiento (opcional, si ya se conoce al capturar)
+      feedback_rating,
+      feedback_category,
+      feedback_comment,
+      escalated_to_human,
+      escalation_target,
+      escalation_reason,
     } = req.body;
 
     // Validacion
@@ -891,6 +965,20 @@ app.post('/api/capturar-conversacion', aiRateLimit, async (req, res) => {
       return res.status(400).json({
         status: 'error',
         message: 'Faltan campos requeridos: pregunta, respuesta',
+      });
+    }
+
+    if (feedback_rating && !FEEDBACK_RATINGS.has(feedback_rating)) {
+      return res.status(400).json({
+        status: 'error',
+        message: `feedback_rating invalido. Usa uno de: ${[...FEEDBACK_RATINGS].join(', ')}`,
+      });
+    }
+
+    if (feedback_category && !FEEDBACK_CATEGORIES.has(feedback_category)) {
+      return res.status(400).json({
+        status: 'error',
+        message: `feedback_category invalida. Usa una de: ${[...FEEDBACK_CATEGORIES].join(', ')}`,
       });
     }
 
@@ -940,6 +1028,13 @@ app.post('/api/capturar-conversacion', aiRateLimit, async (req, res) => {
       tipo_interaccion: tipo_interaccion || 'respuesta_gpt',
       provider: 'openai',
       model: agent.active_version?.model || OPENAI_MODEL,
+      // Feedback humano y escalamiento, si ya se conocen en este momento
+      feedback_rating: feedback_rating || null,
+      feedback_category: feedback_category || null,
+      feedback_comment: feedback_comment || null,
+      escalated_to_human: Boolean(escalated_to_human),
+      escalation_target: escalation_target || null,
+      escalation_reason: escalation_reason || null,
     };
 
     const savedConversation = await saveConversation(conversationData);
@@ -969,12 +1064,79 @@ app.post('/api/capturar-conversacion', aiRateLimit, async (req, res) => {
 });
 
 // ============================================
+// ENDPOINT: PATCH /api/conversations/:id/feedback
+// ============================================
+// Permite registrar (o corregir) el feedback humano de una conversacion ya
+// capturada: si el hotel la marco como alucinacion/incompleta/etc, y si se
+// escalo a una persona de asistencia humana (ej. HyperGuest).
+app.patch('/api/conversations/:id/feedback', requireGptOrAdminAccess, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      feedback_rating,
+      feedback_category,
+      feedback_comment,
+      escalated_to_human,
+      escalation_target,
+      escalation_reason,
+    } = req.body;
+
+    if (feedback_rating && !FEEDBACK_RATINGS.has(feedback_rating)) {
+      return res.status(400).json({
+        status: 'error',
+        message: `feedback_rating invalido. Usa uno de: ${[...FEEDBACK_RATINGS].join(', ')}`,
+      });
+    }
+
+    if (feedback_category && !FEEDBACK_CATEGORIES.has(feedback_category)) {
+      return res.status(400).json({
+        status: 'error',
+        message: `feedback_category invalida. Usa una de: ${[...FEEDBACK_CATEGORIES].join(', ')}`,
+      });
+    }
+
+    if (
+      feedback_rating === undefined &&
+      feedback_category === undefined &&
+      escalated_to_human === undefined
+    ) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Envia al menos feedback_rating, feedback_category o escalated_to_human',
+      });
+    }
+
+    const updated = await updateConversationFeedback(id, {
+      feedback_rating,
+      feedback_category,
+      feedback_comment,
+      escalated_to_human,
+      escalation_target,
+      escalation_reason,
+    });
+
+    if (!updated) {
+      return res.status(404).json({ status: 'error', message: 'Conversacion no encontrada' });
+    }
+
+    res.json({ status: 'success', message: 'Feedback registrado', data: updated });
+  } catch (error) {
+    console.error('Error updating conversation feedback:', error);
+    res.status(500).json({ status: 'error', message: 'Error al registrar el feedback' });
+  }
+});
+
+// ============================================
 // ENDPOINT: GET /api/conversations
 // ============================================
 app.get('/api/conversations', requireAgentAdmin, async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 100;
-    const conversations = await getConversations(limit);
+    const filters = {};
+    if (req.query.feedback_category) filters.feedback_category = req.query.feedback_category;
+    if (req.query.escalated === 'true') filters.escalated_to_human = true;
+    if (req.query.escalated === 'false') filters.escalated_to_human = false;
+    const conversations = await getConversations(limit, filters);
 
     const database = isPostgresConnected()
       ? 'PostgreSQL'
@@ -1046,8 +1208,34 @@ app.get('/api/metrics', requireAgentAdmin, async (req, res) => {
     const hallucinationCount = hallucinatedConversations.length;
     const hallucinationRate = total > 0
       ? parseFloat(((hallucinationCount / total) * 100).toFixed(2))
-      : 2.3; // Fallback estático solo si no hay datos
+      : 0;
     const factualAccuracy = parseFloat((100 - hallucinationRate).toFixed(2));
+
+    // Alucinacion basada en feedback humano explicito (no en el score de IA).
+    // Es una medida mas conservadora: solo cuenta cuando el hotel corrigio a Nora.
+    const feedbackReviewed = conversations.filter((c) => c.feedback_rating || c.feedback_category);
+    const feedbackHallucinated = conversations.filter((c) => c.feedback_category === 'hallucination');
+    const feedbackPositive = conversations.filter((c) => c.feedback_rating === 'positive');
+    const feedbackReviewedCount = feedbackReviewed.length;
+    const feedbackHallucinationCount = feedbackHallucinated.length;
+    const feedbackHallucinationRate = feedbackReviewedCount > 0
+      ? parseFloat(((feedbackHallucinationCount / feedbackReviewedCount) * 100).toFixed(2))
+      : 0;
+    const feedbackPositiveRate = feedbackReviewedCount > 0
+      ? parseFloat(((feedbackPositive.length / feedbackReviewedCount) * 100).toFixed(2))
+      : 0;
+
+    // Escalamiento a asistencia humana (ej. HyperGuest)
+    const escalatedConversations = conversations.filter((c) => c.escalated_to_human === true);
+    const escalationCount = escalatedConversations.length;
+    const escalationRate = total > 0
+      ? parseFloat(((escalationCount / total) * 100).toFixed(2))
+      : 0;
+    const byEscalationTarget = {};
+    escalatedConversations.forEach((c) => {
+      const target = c.escalation_target || 'No especificado';
+      byEscalationTarget[target] = (byEscalationTarget[target] || 0) + 1;
+    });
 
     // Clasificación dinámica de temas basados en palabras clave de la conversación
     const byTopic = {
@@ -1070,12 +1258,6 @@ app.get('/api/metrics', requireAgentAdmin, async (req, res) => {
           byTopic['General Info']++;
         }
       });
-    } else {
-      // Fallback estático si no hay conversaciones registradas
-      byTopic['Travel Info'] = 5;
-      byTopic['Flight Details'] = 12;
-      byTopic['Hotel Booking'] = 8;
-      byTopic['General Info'] = 4;
     }
 
     // Calcular nuevas métricas opcionales
@@ -1126,6 +1308,19 @@ app.get('/api/metrics', requireAgentAdmin, async (req, res) => {
         count: hallucinationCount,
         factualAccuracy,
         byTopic,
+      },
+      // Alucinacion y escalamiento basados en feedback humano real (hoteles),
+      // separado del score de IA autoevaluado en `hallucination`.
+      feedbackHallucination: {
+        rate: feedbackHallucinationRate,
+        count: feedbackHallucinationCount,
+        reviewedCount: feedbackReviewedCount,
+        positiveRate: feedbackPositiveRate,
+      },
+      escalation: {
+        rate: escalationRate,
+        count: escalationCount,
+        byTarget: byEscalationTarget,
       },
       // Nuevas métricas opcionales
       usuariosMetricas: {

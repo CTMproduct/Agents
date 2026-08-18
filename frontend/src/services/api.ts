@@ -7,6 +7,8 @@ import type {
   CaptureConversationResponse,
   ChatRequestPayload,
   ChatResponse,
+  ConversationFeedbackPayload,
+  ConversationFilters,
   ConversationRecord,
 } from '../types';
 import { prepareConversationData } from '../utils/categoryClassifier';
@@ -240,6 +242,8 @@ export const apiService = {
       conversations: response.data.conversations,
       performance: response.data.performance,
       hallucination: response.data.hallucination,
+      feedbackHallucination: response.data.feedbackHallucination,
+      escalation: response.data.escalation,
       usuariosMetricas: response.data.usuariosMetricas,
       preguntasMetricas: response.data.preguntasMetricas,
       database: response.data.database,
@@ -376,9 +380,18 @@ export const apiService = {
     }
   },
 
-  async getConversations(limit = 100): Promise<{ status: string; data: ConversationRecord[]; count: number }> {
+  async getConversations(
+    limit = 100,
+    filters: ConversationFilters = {},
+  ): Promise<{ status: string; data: ConversationRecord[]; count: number }> {
     try {
-      const response = await apiClient.get<ApiListResponse<ConversationRecord> | ConversationRecord[]>(`/api/conversations?limit=${limit}`);
+      const params = new URLSearchParams({ limit: String(limit) });
+      if (filters.feedback_category) params.set('feedback_category', filters.feedback_category);
+      if (filters.escalated !== undefined) params.set('escalated', String(filters.escalated));
+
+      const response = await apiClient.get<ApiListResponse<ConversationRecord> | ConversationRecord[]>(
+        `/api/conversations?${params.toString()}`,
+      );
       const data = response.data;
 
       if (Array.isArray(data)) {
@@ -430,6 +443,20 @@ export const apiService = {
         console.error('Error capturing conversation:', error);
       }
       return null;
+    }
+  },
+
+  async submitConversationFeedback(id: string, payload: ConversationFeedbackPayload): Promise<boolean> {
+    try {
+      await apiClient.patch(`/api/conversations/${id}/feedback`, payload);
+      return true;
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        console.error('Error submitting conversation feedback:', error.response?.status || error.message);
+      } else {
+        console.error('Error submitting conversation feedback:', error);
+      }
+      return false;
     }
   },
 };

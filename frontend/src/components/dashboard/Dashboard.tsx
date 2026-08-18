@@ -11,6 +11,7 @@ import { useConversationHistory, usePerformanceHistory, useHallucinationHistory 
 import { normalizeByTopic } from '../../services/api';
 import '../../styles/Dashboard.css';
 import { ConversationsList } from './ConversationsList';
+import { FeedbackReviewList } from './FeedbackReviewList';
 
 export const Dashboard: React.FC = () => {
   const {
@@ -261,6 +262,89 @@ export const Dashboard: React.FC = () => {
                 />
               </div>
             </div>
+          </section>
+
+          {/* SECTION 3B: FEEDBACK HUMANO Y ESCALAMIENTO */}
+          <section className="dashboard__section">
+            <h2 className="dashboard__section-title">🙋 Feedback Humano y Escalamiento</h2>
+            <p style={{ color: '#666', marginTop: '-8px', marginBottom: '16px' }}>
+              A diferencia del "Análisis de Alucinación" (basado en el score de IA), estas métricas
+              solo cuentan cuando un hotel corrigió o calificó explícitamente a Nora.
+            </p>
+            <div className="dashboard__metrics-grid">
+              <MetricCard
+                title="Alucinaciones Confirmadas"
+                value={metrics?.feedbackHallucination?.rate?.toFixed(2) || 0}
+                unit="%"
+                icon="🚨"
+                description={`${metrics?.feedbackHallucination?.count || 0} de ${metrics?.feedbackHallucination?.reviewedCount || 0} casos revisados`}
+                status={
+                  (metrics?.feedbackHallucination?.count || 0) === 0
+                    ? 'good'
+                    : (metrics?.feedbackHallucination?.rate || 0) < 5
+                      ? 'warning'
+                      : 'critical'
+                }
+              />
+              <MetricCard
+                title="Feedback Positivo"
+                value={metrics?.feedbackHallucination?.positiveRate?.toFixed(2) || 0}
+                unit="%"
+                icon="👍"
+                status={
+                  (metrics?.feedbackHallucination?.positiveRate || 0) >= 80 ? 'good' : 'warning'
+                }
+              />
+              <MetricCard
+                title="Escalado a Humano"
+                value={metrics?.escalation?.rate?.toFixed(2) || 0}
+                unit="%"
+                icon="🧑‍💼"
+                description={`${metrics?.escalation?.count || 0} conversaciones`}
+              />
+              <MetricCard
+                title="Casos Revisados"
+                value={metrics?.feedbackHallucination?.reviewedCount || 0}
+                icon="📝"
+                description="Con feedback explícito del hotel"
+              />
+            </div>
+
+            {metrics?.escalation?.byTarget && Object.keys(metrics.escalation.byTarget).length > 0 && (
+              <div className="dashboard__chart-container">
+                <div className="chart">
+                  <h3 className="chart__title">Escalamientos por destino</h3>
+                  <div style={{ padding: '20px' }}>
+                    {Object.entries(metrics.escalation.byTarget).map(([target, count]) => (
+                      <div
+                        key={target}
+                        style={{
+                          marginBottom: '12px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <span>{target}</span>
+                        <span
+                          style={{
+                            fontWeight: 'bold',
+                            backgroundColor: '#fdf0e8',
+                            padding: '4px 12px',
+                            borderRadius: '12px',
+                            color: '#cc6600',
+                          }}
+                        >
+                          {count as number}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <FeedbackReviewList />
           </section>
 
           {/* SECTION 4: RESUMEN */}
