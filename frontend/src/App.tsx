@@ -64,7 +64,7 @@ function App() {
           <span className="app-nav__mark">N</span>
           <div>
             <strong>Nora Control</strong>
-            <small>Agentes CTM</small>
+            <small>NORA (Net Optimization &amp; Revenue Assistant)</small>
           </div>
         </div>
 
