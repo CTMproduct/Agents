@@ -18,6 +18,7 @@ export const Dashboard: React.FC = () => {
     metrics,
     loading: metricsLoading,
     error: metricsError,
+    hasData,
     refetch,
     isRealtime,
     setIsRealtime,
@@ -27,7 +28,10 @@ export const Dashboard: React.FC = () => {
   const { data: performanceHistory, loading: perfLoading } = usePerformanceHistory(24);
   const { data: hallucinationHistory, loading: hallLoading } = useHallucinationHistory(7);
 
-  if (metricsError) {
+  // La pantalla completa de error solo aplica cuando nunca se pudieron
+  // cargar datos. Si ya hay metricas en pantalla, un fallo puntual (backend
+  // reiniciando tras un deploy) se muestra como aviso sin tumbar el tablero.
+  if (metricsError && !hasData) {
     return (
       <div className="dashboard dashboard--error">
         <Header agentName="Nora" />
@@ -51,6 +55,15 @@ export const Dashboard: React.FC = () => {
         onToggleRealtime={setIsRealtime}
         onRefresh={refetch}
       />
+
+      {metricsError && hasData && (
+        <div className="dashboard__warning" role="status">
+          <span>⚠️ {metricsError}</span>
+          <button onClick={() => refetch()} className="dashboard__retry-button">
+            Reintentar ahora
+          </button>
+        </div>
+      )}
 
       {metricsLoading ? (
         <div className="dashboard__loading">

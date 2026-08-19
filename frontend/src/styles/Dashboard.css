@@ -75,6 +75,28 @@
   background-color: #764ba2;
 }
 
+/* Aviso no bloqueante: el tablero sigue visible con los ultimos datos */
+.dashboard__warning {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 1rem clamp(1rem, 3vw, 2rem) 0;
+  padding: 0.9rem 1.25rem;
+  background: #fff6e5;
+  border: 1px solid #f0c987;
+  border-radius: 10px;
+  color: #7a4b00;
+  font-weight: 600;
+}
+
+.dashboard__warning .dashboard__retry-button {
+  margin-top: 0;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+}
+
 /* Sections */
 .dashboard__section {
   margin-bottom: 3rem;
